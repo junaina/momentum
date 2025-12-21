@@ -1,0 +1,375 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/**
+ * Enums
+ */
+enum Theme {
+  system
+  light
+  dark
+}
+
+enum HabitFrequency {
+  daily
+  weekly
+}
+
+enum HabitStatus {
+  active
+  paused
+  archived
+}
+
+enum HabitVisibility {
+  private
+  friends
+  public
+}
+
+enum ReminderChannel {
+  email
+  in_app
+}
+
+enum HabitLogSource {
+  manual
+  backfill
+  system
+}
+
+enum FriendRequestStatus {
+  pending
+  accepted
+  declined
+}
+
+enum ChallengeGoalType {
+  streak_days
+  completions
+}
+
+enum ChallengeVisibility {
+  friends
+  anyone
+}
+
+enum ChallengeParticipantStatus {
+  active
+  left
+}
+
+/**
+ * Auth.js (NextAuth) tables
+ * - keep these names: User, Account, Session, VerificationToken
+ */
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  passwordHash  String?   @map("password_hash")
+  name          String?
+  username      String?   @unique
+  image         String?   @map("avatar_url")
+  timezone      String    @default("UTC")
+  weekStartDay  Int       @default(1) @map("week_start_day") // 0=Sun, 1=Mon
+  theme         Theme     @default(system)
+  emailVerified DateTime? @map("email_verified_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Auth.js relations
+  accounts Account[]
+  sessions Session[]
+
+  // Core app relations
+  habits    Habit[]
+  habitLogs HabitLog[]
+
+  sentFriendRequests     FriendRequest[] @relation("FriendRequestFrom")
+  receivedFriendRequests FriendRequest[] @relation("FriendRequestTo")
+  friendshipsA           Friendship[]    @relation("FriendshipA")
+  friendshipsB           Friendship[]    @relation("FriendshipB")
+
+  passwordResetTokens PasswordResetToken[]
+  eventLogs           EventLog[]
+
+  // Challenges (optional “social wow”)
+  createdChallenges     Challenge[]            @relation("ChallengeCreator")
+  challengeParticipants ChallengeParticipant[]
+  reactionsGiven        HabitLogReaction[]     @relation("HabitLogReactionFromUser")
+
+  @@map("users")
+}
+
+model Account {
+  id                String @id @default(uuid()) @db.Uuid
+  userId            String @map("user_id") @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String @map("provider_account_id")
+
+  refresh_token String? @db.Text
+  access_token  String? @db.Text
+  expires_at    Int?
+  token_type    String?
+  scope         String?
+  id_token      String? @db.Text
+  session_state String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id") @db.Uuid
+  expires      DateTime @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime @db.Timestamptz(6)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+/**
+ * Core app tables
+ */
+model Habit {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  name        String
+  description String? @db.Text
+  emoji       String?
+  color       String?
+
+  frequency     HabitFrequency
+  weeklyTarget  Int?           @map("weekly_target")
+  scheduledDays Int[]          @default([]) @map("scheduled_days") // 0–6
+
+  status     HabitStatus @default(active)
+  startDate  DateTime?   @map("start_date") @db.Date
+  pausedAt   DateTime?   @map("paused_at") @db.Timestamptz(6)
+  archivedAt DateTime?   @map("archived_at") @db.Timestamptz(6)
+
+  visibility HabitVisibility @default(private)
+
+  reminderEnabled      Boolean          @default(false) @map("reminder_enabled")
+  reminderTime         DateTime?        @map("reminder_time") @db.Time(0)
+  reminderChannel      ReminderChannel? @map("reminder_channel")
+  reminderSnoozedUntil DateTime?        @map("reminder_snoozed_until") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs                  HabitLog[]
+  challengeParticipants ChallengeParticipant[] @relation("ChallengeParticipantHabit")
+
+  @@index([userId, status])
+  @@index([userId, frequency])
+  @@map("habits")
+}
+
+model HabitLog {
+  id      String @id @default(uuid()) @db.Uuid
+  habitId String @map("habit_id") @db.Uuid
+  userId  String @map("user_id") @db.Uuid
+
+  logDate     DateTime       @map("log_date") @db.Date
+  completedAt DateTime?      @map("completed_at") @db.Timestamptz(6)
+  source      HabitLogSource @default(manual)
+  note        String?        @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reactions HabitLogReaction[]
+
+  @@unique([habitId, logDate])
+  @@index([userId, logDate])
+  @@index([habitId, logDate])
+  @@map("habit_logs")
+}
+
+/**
+ * Friends
+ */
+model FriendRequest {
+  id         String              @id @default(uuid()) @db.Uuid
+  fromUserId String              @map("from_user_id") @db.Uuid
+  toUserId   String              @map("to_user_id") @db.Uuid
+  status     FriendRequestStatus @default(pending)
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  respondedAt DateTime? @map("responded_at") @db.Timestamptz(6)
+
+  fromUser User @relation("FriendRequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("FriendRequestTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@map("friend_requests")
+}
+
+model Friendship {
+  id        String   @id @default(uuid()) @db.Uuid
+  userAId   String   @map("user_a_id") @db.Uuid
+  userBId   String   @map("user_b_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userA User @relation("FriendshipA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("FriendshipB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+  @@map("friendships")
+}
+
+/**
+ * Optional social “wow”
+ */
+model Challenge {
+  id            String @id @default(uuid()) @db.Uuid
+  creatorUserId String @map("creator_user_id") @db.Uuid
+
+  title       String
+  description String? @db.Text
+
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+
+  goalType  ChallengeGoalType @map("goal_type")
+  goalValue Int               @map("goal_value")
+
+  visibility ChallengeVisibility @default(friends)
+  inviteCode String?             @unique @map("invite_code")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  creator      User                   @relation("ChallengeCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  participants ChallengeParticipant[]
+
+  @@index([creatorUserId])
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  id          String                     @id @default(uuid()) @db.Uuid
+  challengeId String                     @map("challenge_id") @db.Uuid
+  userId      String                     @map("user_id") @db.Uuid
+  joinedAt    DateTime                   @default(now()) @map("joined_at") @db.Timestamptz(6)
+  status      ChallengeParticipantStatus @default(active)
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // optional “link my habit for this challenge”
+  habitId String? @map("habit_id") @db.Uuid
+  habit   Habit?  @relation("ChallengeParticipantHabit", fields: [habitId], references: [id], onDelete: SetNull)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+  @@map("challenge_participants")
+}
+
+/**
+ * Reactions + comments on logs
+ */
+model HabitLogReaction {
+  id         String @id @default(uuid()) @db.Uuid
+  habitLogId String @map("habit_log_id") @db.Uuid
+  fromUserId String @map("from_user_id") @db.Uuid
+  emoji      String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  habitLog HabitLog @relation(fields: [habitLogId], references: [id], onDelete: Cascade)
+  fromUser User     @relation("HabitLogReactionFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+
+  @@unique([habitLogId, fromUserId, emoji])
+  @@index([habitLogId])
+  @@map("habit_log_reactions")
+}
+
+/**
+ * Password reset token (custom, not part of Auth.js default)
+ */
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+/**
+ * Optional safety / reliability
+ */
+model AuthAttempt {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String?
+  ipHash        String?  @map("ip_hash")
+  success       Boolean
+  failureReason String?  @map("failure_reason")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([ipHash, createdAt])
+  @@index([email, createdAt])
+  @@map("auth_attempts")
+}
+
+model EventLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  level     String
+  eventType String   @map("event_type")
+  message   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("event_logs")
+}

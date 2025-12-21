@@ -78,3 +78,5 @@ public/workbox-*.js.map
 
 .vercel
 .env*.local
+
+/src/generated/prisma
