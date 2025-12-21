@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
-    "@prisma/client": "^7.0.0",
+    "@prisma/client": "^7.2.0",
     "@serwist/next": "^9.3.0",
     "@tanstack/react-query": "^5.90.12",
     "class-variance-authority": "^0.7.1",
