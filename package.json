@@ -10,6 +10,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "lint": "eslint .",
     "vercel:pull:prod": "vercel pull --yes --environment=production",
     "vercel:build:prod": "vercel build --prod --yes",
