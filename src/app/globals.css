@@ -135,3 +135,20 @@
     @apply bg-background text-foreground;
   }
 }
+@layer utilities {
+  .momentum-glow-1 {
+    background: radial-gradient(
+      circle at 30% 30%,
+      hsl(154 62% 50% / 0.35),
+      transparent 60%
+    );
+  }
+
+  .momentum-glow-2 {
+    background: radial-gradient(
+      circle at 50% 50%,
+      hsl(152 54% 39% / 0.25),
+      transparent 65%
+    );
+  }
+}

@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
 import "./globals.css";
+
+import { Manrope } from "next/font/google";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   applicationName: "Momentum",
@@ -18,16 +25,24 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#30ce89",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#30ce89" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
 };
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning className={manrope.variable}>
+      <body className="min-h-screen bg-background text-foreground antialiased font-sans">
+        {children}
+      </body>
     </html>
   );
 }
