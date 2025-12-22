@@ -80,3 +80,6 @@ public/workbox-*.js.map
 .env*.local
 
 /src/generated/prisma
+
+# next directory
+.next/
