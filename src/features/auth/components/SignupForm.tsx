@@ -120,7 +120,7 @@ export function SignupForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name">Name (optional)</Label>
+            <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" autoComplete="name" />
             {fieldErrors.name ? (
               <p className="text-sm text-destructive">{fieldErrors.name}</p>
