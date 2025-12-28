@@ -12,5 +12,7 @@ export default defineConfig([
     ".vercel/**",
     "src/generated/**",
     "prisma/generated/**",
+    "public/sw.js",
+    "public/**/*.js",
   ]),
 ]);
