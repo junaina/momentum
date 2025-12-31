@@ -31,6 +31,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Loader2, LogOut, Pencil } from "lucide-react";
+import { useUpdateMe } from "@/features/auth/hooks/useUpdateMe";
 
 type ThemeChoice = "system" | "light" | "dark";
 type WeekStartDay = 0 | 1;
@@ -96,6 +97,7 @@ function coerceTimezone(input: unknown): string {
 export function AccountSettingsForm({ user }: { user: SafeUser }) {
   const router = useRouter();
   const logout = useLogout();
+  const updateMe = useUpdateMe();
   const { setTheme } = useTheme();
 
   // ✅ Initialize local form state ONCE from props (no effects needed)
@@ -138,305 +140,341 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
 
   return (
     <main className="min-h-dvh bg-background text-foreground">
-     <div className="w-full px-4 pb-24 pt-6 sm:px-6 lg:px-10">
-  <div className="w-full max-w-5xl">
+      <div className="w-full px-4 pb-24 pt-6 sm:px-6 lg:px-10">
+        <div className="w-full max-w-5xl">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold tracking-tight">
+                Account settings
+              </h1>
+              <p className="mt-1 truncate text-sm text-muted-foreground">
+                Manage your profile and preferences.
+              </p>
+            </div>
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight">
-              Account settings
-            </h1>
-            <p className="mt-1 truncate text-sm text-muted-foreground">
-              Manage your profile and preferences.
-            </p>
-          </div>
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user.image ?? undefined} alt="Your avatar" />
+                <AvatarFallback>{initials(displayName)}</AvatarFallback>
+              </Avatar>
 
-          <div className="relative">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={user.image ?? undefined} alt="Your avatar" />
-              <AvatarFallback>{initials(displayName)}</AvatarFallback>
-            </Avatar>
-
-            {/* Pencil overlay (file upload will come later) */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
-              onClick={() =>
-                showNotWiredYet(
-                  "Avatar uploads will be added later (UploadThing)."
-                )
-              }
-              aria-label="Edit avatar"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {notice ? (
-          <div className="mt-4 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
-            {notice}
-          </div>
-        ) : null}
-
-        {/* Details */}
-        <section className="mt-8">
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold">Details</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Update your name and username.
-            </p>
-          </div>
-
-          <Card className="rounded-2xl border-border bg-card p-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username">Username (optional)</Label>
-                <Input
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Pick a username"
-                />
-                <p className="text-xs text-muted-foreground">
-                  If empty, it stays unset. If you set one, it must be unique.
-                </p>
-              </div>
-
+              {/* Pencil overlay (file upload will come later) */}
               <Button
                 type="button"
-                className="w-full"
+                variant="secondary"
+                size="icon"
+                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
                 onClick={() =>
                   showNotWiredYet(
-                    "Saving will be enabled after PATCH /api/auth/me is added."
+                    "Avatar uploads will be added later (UploadThing)."
                   )
                 }
+                aria-label="Edit avatar"
               >
-                Save details
+                <Pencil className="h-4 w-4" />
               </Button>
             </div>
-          </Card>
-        </section>
-
-        {/* Avatar URL (works before uploads) */}
-        <section className="mt-6">
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold">Avatar</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Paste an image URL now. File upload comes later with UploadThing.
-            </p>
           </div>
 
-          <Card className="rounded-2xl border-border bg-card p-4">
-            <div className="space-y-2">
-              <Label htmlFor="avatarUrl">Image URL</Label>
-              <Input
-                id="avatarUrl"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://..."
-              />
+          {notice ? (
+            <div className="mt-4 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
+              {notice}
+            </div>
+          ) : null}
+
+          {/* Details */}
+          <section className="mt-8">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold">Details</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Update your name and username.
+              </p>
+            </div>
+
+            <Card className="rounded-2xl border-border bg-card p-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username (optional)</Label>
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Pick a username"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If empty, it stays unset. If you set one, it must be unique.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      const updated = await updateMe.mutateAsync({
+                        name,
+                        username,
+                      });
+                      setName(updated.name ?? "");
+                      setUsername(updated.username ?? "");
+                      setNotice("Details saved.");
+                      window.setTimeout(() => setNotice(null), 2500);
+                    } catch (e) {
+                      const msg =
+                        e instanceof Error ? e.message : "Save failed";
+                      setNotice(msg);
+                      window.setTimeout(() => setNotice(null), 2500);
+                    }
+                  }}
+                  disabled={updateMe.isPending}
+                >
+                  Save details
+                </Button>
+              </div>
+            </Card>
+          </section>
+
+          {/* Avatar URL (works before uploads) */}
+          <section className="mt-6">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold">Avatar</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paste an image URL now. File upload comes later with
+                UploadThing.
+              </p>
+            </div>
+
+            <Card className="rounded-2xl border-border bg-card p-4">
+              <div className="space-y-2">
+                <Label htmlFor="avatarUrl">Image URL</Label>
+                <Input
+                  id="avatarUrl"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      const updated = await updateMe.mutateAsync({
+                        image: avatarUrl,
+                      });
+                      setAvatarUrl(updated.image ?? "");
+                      setNotice("Avatar updated.");
+                      window.setTimeout(() => setNotice(null), 2500);
+                    } catch (e) {
+                      const msg =
+                        e instanceof Error ? e.message : "Save failed";
+                      setNotice(msg);
+                      window.setTimeout(() => setNotice(null), 2500);
+                    }
+                  }}
+                  disabled={updateMe.isPending}
+                >
+                  Set avatar URL
+                </Button>
+              </div>
+            </Card>
+          </section>
+
+          {/* Preferences */}
+          <section className="mt-6">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold">Preferences</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                These affect how Momentum behaves for you.
+              </p>
+            </div>
+
+            <Card className="rounded-2xl border-border bg-card p-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Theme</Label>
+                  <Select
+                    value={theme}
+                    onValueChange={(v) => {
+                      if (!isThemeChoice(v)) return;
+                      setThemeLocal(v);
+                      setTheme(v);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system">System</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Input
+                    id="timezone"
+                    list="timezones"
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    placeholder="UTC"
+                  />
+                  <datalist id="timezones">
+                    {tzList.map((tz) => (
+                      <option key={tz} value={tz} />
+                    ))}
+                  </datalist>
+                  <p className="text-xs text-muted-foreground">
+                    Start typing to search (example: “Asia/Karachi”).
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Week starts on</Label>
+                  <Select
+                    value={String(weekStartDay)}
+                    onValueChange={(v) => setWeekStartDay(toWeekStartDay(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sunday</SelectItem>
+                      <SelectItem value="1">Monday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      await updateMe.mutateAsync({
+                        theme,
+                        timezone,
+                        weekStartDay,
+                      });
+                      setNotice("Preferences saved.");
+                      window.setTimeout(() => setNotice(null), 2500);
+                    } catch (e) {
+                      const msg =
+                        e instanceof Error ? e.message : "Save failed";
+                      setNotice(msg);
+                      window.setTimeout(() => setNotice(null), 2500);
+                    }
+                  }}
+                  disabled={updateMe.isPending}
+                >
+                  Save preferences
+                </Button>
+              </div>
+            </Card>
+          </section>
+
+          <Separator className="my-8" />
+
+          {/* Account */}
+          <section>
+            <h2 className="text-sm font-semibold">Account</h2>
+
+            <div className="mt-3 space-y-3">
               <Button
                 type="button"
                 variant="secondary"
                 className="w-full"
-                onClick={() =>
-                  showNotWiredYet(
-                    "Saving will be enabled after PATCH /api/auth/me is added."
-                  )
-                }
+                disabled={logout.isPending}
+                onClick={async () => {
+                  try {
+                    await logout.mutateAsync();
+                    router.replace("/login");
+                  } catch {
+                    showNotWiredYet("Logout failed. Try again.");
+                  }
+                }}
               >
-                Set avatar URL
+                {logout.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Logging out…
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </>
+                )}
               </Button>
+
+              {/* Danger Zone */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full">
+                    Delete my account permanently
+                  </Button>
+                </AlertDialogTrigger>
+
+                <AlertDialogContent className="rounded-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action is permanent. To confirm, type your{" "}
+                      {(user.username ?? "").trim() ? "username" : "email"}:{" "}
+                      <span className="font-medium text-foreground">
+                        {confirmTarget}
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-2">
+                    <Input
+                      value={confirmText}
+                      onChange={(e) => setConfirmText(e.target.value)}
+                      placeholder={`Type ${
+                        (user.username ?? "").trim() ? "username" : "email"
+                      }`}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Delete endpoint will be wired after settings save.
+                    </p>
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setConfirmText("")}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                      <Button
+                        variant="destructive"
+                        disabled={!canDelete}
+                        onClick={() =>
+                          showNotWiredYet(
+                            "Delete will be enabled after POST /api/auth/delete-account is added."
+                          )
+                        }
+                      >
+                        Delete permanently
+                      </Button>
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-          </Card>
-        </section>
-
-        {/* Preferences */}
-        <section className="mt-6">
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold">Preferences</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              These affect how Momentum behaves for you.
-            </p>
-          </div>
-
-          <Card className="rounded-2xl border-border bg-card p-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Theme</Label>
-                <Select
-                  value={theme}
-                  onValueChange={(v) => {
-                    if (!isThemeChoice(v)) return;
-                    setThemeLocal(v);
-                    setTheme(v);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="system">System</SelectItem>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  list="timezones"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  placeholder="UTC"
-                />
-                <datalist id="timezones">
-                  {tzList.map((tz) => (
-                    <option key={tz} value={tz} />
-                  ))}
-                </datalist>
-                <p className="text-xs text-muted-foreground">
-                  Start typing to search (example: “Asia/Karachi”).
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Week starts on</Label>
-                <Select
-                  value={String(weekStartDay)}
-                  onValueChange={(v) => setWeekStartDay(toWeekStartDay(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select day" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">Sunday</SelectItem>
-                    <SelectItem value="1">Monday</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() =>
-                  showNotWiredYet(
-                    "Saving will be enabled after PATCH /api/auth/me is added."
-                  )
-                }
-              >
-                Save preferences
-              </Button>
-            </div>
-          </Card>
-        </section>
-
-        <Separator className="my-8" />
-
-        {/* Account */}
-        <section>
-          <h2 className="text-sm font-semibold">Account</h2>
-
-          <div className="mt-3 space-y-3">
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              disabled={logout.isPending}
-              onClick={async () => {
-                try {
-                  await logout.mutateAsync();
-                  router.replace("/login");
-                } catch {
-                  showNotWiredYet("Logout failed. Try again.");
-                }
-              }}
-            >
-              {logout.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Logging out…
-                </>
-              ) : (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </>
-              )}
-            </Button>
-
-            {/* Danger Zone */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full">
-                  Delete my account permanently
-                </Button>
-              </AlertDialogTrigger>
-
-              <AlertDialogContent className="rounded-2xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete account?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action is permanent. To confirm, type your{" "}
-                    {(user.username ?? "").trim() ? "username" : "email"}:{" "}
-                    <span className="font-medium text-foreground">
-                      {confirmTarget}
-                    </span>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-
-                <div className="space-y-2">
-                  <Input
-                    value={confirmText}
-                    onChange={(e) => setConfirmText(e.target.value)}
-                    placeholder={`Type ${
-                      (user.username ?? "").trim() ? "username" : "email"
-                    }`}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Delete endpoint will be wired after settings save.
-                  </p>
-                </div>
-
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setConfirmText("")}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction asChild>
-                    <Button
-                      variant="destructive"
-                      disabled={!canDelete}
-                      onClick={() =>
-                        showNotWiredYet(
-                          "Delete will be enabled after POST /api/auth/delete-account is added."
-                        )
-                      }
-                    >
-                      Delete permanently
-                    </Button>
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
       </div>
     </main>
   );
