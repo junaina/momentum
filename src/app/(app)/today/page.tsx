@@ -29,34 +29,37 @@ export default function TodayPage() {
     "there";
   return (
     <main className="min-h-dvh bg-background text-foreground">
-     <div className="w-full px-4 pt-8 sm:px-6 lg:px-10">
-  <div className="w-full max-w-5xl">
-
-        <h1 className="text-lg font-semibold tracking-tight">Today</h1>
-        <Link href="/settings" className="mt-6 block">
-          <Card className="rounded-2xl border-border bg-card p-4 shadow-(--shadow-momentum)">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage
-                  src={typeof user?.image === "string" ? user.image : undefined}
-                  alt="ur avatar >_<"
-                ></AvatarImage>
-                <AvatarFallback>
-                  {initials(user?.name || user?.username || user?.email || "U")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">
-                  Welcome, {displayName}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">
-                  Tap to open account settings
+      <div className="w-full max-w-none md:mt-[1.5in] md:mx-[1.5in] md:w-[calc(100%-3in)]">
+        <div className="w-full max-w-5xl">
+          <h1 className="text-2xl font-bold tracking-tight">Today</h1>
+          <Link href="/settings" className="mt-6 block">
+            <Card className="rounded-2xl border-border bg-card p-4 shadow-(--shadow-momentum)">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={
+                      typeof user?.image === "string" ? user.image : undefined
+                    }
+                    alt="ur avatar >_<"
+                  ></AvatarImage>
+                  <AvatarFallback>
+                    {initials(
+                      user?.name || user?.username || user?.email || "U"
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">
+                    Welcome, {displayName}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    Tap to open account settings
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        </Link>
-      </div>
+            </Card>
+          </Link>
+        </div>
       </div>
     </main>
   );

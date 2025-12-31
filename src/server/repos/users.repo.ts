@@ -129,3 +129,11 @@ export async function updateUserByIdSafe(
     },
   });
 }
+//delete my acc permanently
+
+export async function deleteUserById(userId: string) {
+  return prisma.user.delete({
+    where: { id: userId },
+    select: { id: true },
+  });
+}

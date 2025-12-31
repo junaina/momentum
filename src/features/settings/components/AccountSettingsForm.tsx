@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import type { SafeUser } from "@/server/validators/schema";
+import { useDeleteAccount } from "@/features/auth/hooks/useDeleteAccount";
+import { AvatarUploadDialog } from "@/features/settings/components/AvatarUploadDialog";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -98,6 +101,7 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
   const router = useRouter();
   const logout = useLogout();
   const updateMe = useUpdateMe();
+  const deleteAccount = useDeleteAccount();
   const { setTheme } = useTheme();
 
   // ✅ Initialize local form state ONCE from props (no effects needed)
@@ -130,6 +134,7 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
   const confirmTarget = (user.username ?? "").trim() || user.email.trim();
 
   const [confirmText, setConfirmText] = React.useState<string>("");
+  const [avatarOpen, setAvatarOpen] = React.useState(false);
 
   const canDelete = confirmText.trim() === confirmTarget;
 
@@ -140,21 +145,40 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
 
   return (
     <main className="min-h-dvh bg-background text-foreground">
-      <div className="w-full px-4 pb-24 pt-6 sm:px-6 lg:px-10">
-        <div className="w-full max-w-5xl">
+      <div className="w-full pb-24 px-4 pt-6 md:px-0 md:pt-0">
+        <div className="w-full max-w-none md:mt-[1.5in] md:mx-[1.5in] md:w-[calc(100%-3in)]">
+          <AvatarUploadDialog
+            open={avatarOpen}
+            onOpenChange={setAvatarOpen}
+            currentUrl={user.image ?? null}
+          />
+
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-tight">
-                Account settings
-              </h1>
-              <p className="mt-1 truncate text-sm text-muted-foreground">
-                Manage your profile and preferences.
-              </p>
+            <div className="flex min-w-0 items-start gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-0.5 shrink-0"
+                onClick={() => router.push("/today")}
+                aria-label="Back to Today"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Account settings
+                </h1>
+                <p className="mt-1 truncate text-sm text-muted-foreground">
+                  Manage your profile and preferences.
+                </p>
+              </div>
             </div>
 
             <div className="relative">
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-20 w-20">
                 <AvatarImage src={user.image ?? undefined} alt="Your avatar" />
                 <AvatarFallback>{initials(displayName)}</AvatarFallback>
               </Avatar>
@@ -164,22 +188,21 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
                 type="button"
                 variant="secondary"
                 size="icon"
-                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
-                onClick={() =>
-                  showNotWiredYet(
-                    "Avatar uploads will be added later (UploadThing)."
-                  )
-                }
+                className="absolute -bottom-2 -right-2 h-10 w-10 rounded-full"
+                onClick={() => {
+                  setNotice(null);
+                  setAvatarOpen(true);
+                }}
                 aria-label="Edit avatar"
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
           {notice ? (
             <div className="mt-4 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
-              {notice}
+              {}
             </div>
           ) : null}
 
@@ -279,7 +302,7 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
                     } catch (e) {
                       const msg =
                         e instanceof Error ? e.message : "Save failed";
-                      setNotice(msg);
+                      setNotice(null);
                       window.setTimeout(() => setNotice(null), 2500);
                     }
                   }}
@@ -459,12 +482,18 @@ export function AccountSettingsForm({ user }: { user: SafeUser }) {
                     <AlertDialogAction asChild>
                       <Button
                         variant="destructive"
-                        disabled={!canDelete}
-                        onClick={() =>
-                          showNotWiredYet(
-                            "Delete will be enabled after POST /api/auth/delete-account is added."
-                          )
-                        }
+                        disabled={!canDelete || deleteAccount.isPending}
+                        onClick={async () => {
+                          try {
+                            await deleteAccount.mutateAsync(confirmText);
+                            router.replace("/login");
+                          } catch (e) {
+                            const msg =
+                              e instanceof Error ? e.message : "Delete failed";
+                            setNotice(msg);
+                            window.setTimeout(() => setNotice(null), 2500);
+                          }
+                        }}
                       >
                         Delete permanently
                       </Button>
