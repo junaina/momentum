@@ -71,10 +71,6 @@ enum ChallengeParticipantStatus {
   left
 }
 
-/**
- * Auth.js (NextAuth) tables
- * - keep these names: User, Account, Session, VerificationToken
- */
 model User {
   id            String    @id @default(uuid()) @db.Uuid
   email         String    @unique
@@ -90,7 +86,6 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  // Auth.js relations
   sessions Session[]
 
   // Core app relations

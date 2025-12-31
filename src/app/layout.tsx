@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 import { Manrope } from "next/font/google";
-
+import { QueryProvider } from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-geist-sans",
@@ -41,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={manrope.variable}>
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
-        {children}
+        <ThemeProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
