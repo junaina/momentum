@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as authService from "@/server/services/auth.service";
-import { clearSessionCookie, getSessionToken } from "@/server/auth/session";
-import { patchMeBodySchema } from "@/server/validators/me.zod";
 import * as usersService from "@/server/services/user.service";
+import { clearSessionCookie, getSessionToken } from "@/server/auth/session";
+import { deleteAccountBodySchema } from "@/server/validators/delete-account.zod";
 
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const token = getSessionToken(req);
-  if (!token) {
+  if (!token)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const user = await authService.getUserFromSessionToken(token);
-
-  // If session is invalid/expired, clear cookie too
   if (!user) {
     const res = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     res.headers.set("Cache-Control", "no-store");
@@ -22,25 +19,8 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
-  const res = NextResponse.json({ user }, { status: 200 });
-  res.headers.set("Cache-Control", "no-store");
-  return res;
-}
-
-export async function PATCH(req: NextRequest) {
-  const token = getSessionToken(req);
-  if (!token) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  const sessionUser = await authService.getUserFromSessionToken(token);
-  if (!sessionUser) {
-    const res = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    res.headers.set("Cache-Control", "no-store");
-    clearSessionCookie(res);
-    return res;
-  }
   const raw: unknown = await req.json().catch(() => null);
-  const parsed = patchMeBodySchema.safeParse(raw);
+  const parsed = deleteAccountBodySchema.safeParse(raw);
   if (!parsed.success) {
     const res = NextResponse.json(
       { error: "Invalid request body", issues: parsed.error.flatten() },
@@ -49,14 +29,20 @@ export async function PATCH(req: NextRequest) {
     res.headers.set("Cache-Control", "no-store");
     return res;
   }
+
   try {
-    const user = await usersService.updateMe(sessionUser.id, parsed.data);
-    const res = NextResponse.json({ user }, { status: 200 });
+    await usersService.deleteMyAccount(
+      { id: user.id, email: user.email, username: user.username ?? null },
+      parsed.data.confirm
+    );
+
+    const res = NextResponse.json({ ok: true }, { status: 200 });
     res.headers.set("Cache-Control", "no-store");
+    clearSessionCookie(res); // ensure cookie is gone even if client keeps it
     return res;
   } catch (err) {
-    if (err instanceof usersService.UsernameTakenError) {
-      const res = NextResponse.json({ error: err.message }, { status: 409 });
+    if (err instanceof usersService.DeleteConfirmMismatchError) {
+      const res = NextResponse.json({ error: err.message }, { status: 400 });
       res.headers.set("Cache-Control", "no-store");
       return res;
     }

@@ -83,3 +83,57 @@ export async function findUserByIdSafe(
     },
   });
 }
+export type UpdateUserInput = {
+  name?: string | null;
+  username?: string | null;
+  image?: string | null;
+  timezone?: string;
+  weekStartDay?: 0 | 1;
+  theme?: "system" | "light" | "dark";
+};
+
+//minimal lookup to verify uniqueness
+
+export async function findUserIdByusername(username: string) {
+  return prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+}
+// update + return SafeUser
+export async function updateUserByIdSafe(
+  userId: string,
+  data: UpdateUserInput
+) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.username !== undefined ? { username: data.username } : {}),
+      ...(data.image !== undefined ? { image: data.image } : {}),
+      ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
+      ...(data.weekStartDay !== undefined
+        ? { weekStartDay: data.weekStartDay }
+        : {}),
+      ...(data.theme !== undefined ? { theme: data.theme } : {}),
+    },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      image: true,
+      timezone: true,
+      weekStartDay: true,
+      theme: true,
+    },
+  });
+}
+//delete my acc permanently
+
+export async function deleteUserById(userId: string) {
+  return prisma.user.delete({
+    where: { id: userId },
+    select: { id: true },
+  });
+}
