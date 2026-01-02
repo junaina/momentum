@@ -10,6 +10,7 @@ import { ModalSheet } from "@/features/today/components/ModalSheet";
 import { useCreateHabit } from "@/features/today/hooks/useCreateHabit";
 import { EmojiPickerPopover } from "@/features/today/components/EmojiPickerPopover";
 import { getRandomHabitEmoji } from "@/features/today/utils/randomEmoji";
+import { TimePopover } from "@/features/today/components/TimePopover";
 
 type Mode = "app" | "demo";
 
@@ -367,12 +368,7 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
 
           {reminderEnabled ? (
             <div className="grid max-w-xs grid-cols-1 gap-2">
-              <input
-                type="time"
-                value={reminderTime}
-                onChange={(e) => setReminderTime(e.currentTarget.value)}
-                className="h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-              />
+              <TimePopover value={reminderTime} onChange={setReminderTime} />
               {fieldErrors.reminderTime ? (
                 <p className="text-sm text-destructive">
                   {fieldErrors.reminderTime}

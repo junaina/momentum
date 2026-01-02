@@ -62,35 +62,40 @@ export function ModalSheet(props: ModalSheetProps) {
         <div
           className="w-full rounded-t-3xl border border-border bg-card text-card-foreground shadow-(--shadow-momentum) md:rounded-3xl"
           style={{ maxHeight: "var(--momentum-sheet-max-h)" }}
-          onPointerDown={(e) => e.stopPropagation()} // prevents overlay-close when interacting inside
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold leading-6">{title}</h2>
-              {description ? (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {description}
-                </p>
-              ) : null}
+          <div className="flex max-h-(--momentum-sheet-max-h) flex-col">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold leading-6">{title}</h2>
+                {description ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {description}
+                  </p>
+                ) : null}
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-foreground hover:bg-muted"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-foreground hover:bg-muted"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+            {/* Body (scrolls) */}
+            <div className="flex-1 overflow-auto px-4 py-4">{children}</div>
 
-          <div className="max-h-[calc(var(--momentum-sheet-max-h)-132px)] overflow-auto px-4 py-4">
-            {children}
+            {/* Footer (pinned + safe-area padding) */}
+            {footer ? (
+              <div className="shrink-0 border-t border-border px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                {footer}
+              </div>
+            ) : null}
           </div>
-
-          {footer ? (
-            <div className="border-t border-border px-4 py-4">{footer}</div>
-          ) : null}
         </div>
       </div>
     </div>,

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Calendar, Plus } from "lucide-react";
 import { CreateHabitSheet } from "@/features/today/components/CreateHabitSheet";
+import { DatePopover } from "@/features/today/components/DatePopover";
 
 type Mode = "app" | "demo";
 
@@ -43,20 +44,6 @@ export function TodayScreen({ mode }: TodayScreenProps) {
 
   const heading = useMemo(() => formatHeading(selectedDate), [selectedDate]);
 
-  function openDatePicker() {
-    const el = dateInputRef.current;
-    if (!el) return;
-
-    // Best effort: show native picker if supported, else focus.
-    const maybeShowPicker = el.showPicker;
-    if (typeof maybeShowPicker === "function") {
-      maybeShowPicker.call(el);
-    } else {
-      el.focus();
-      el.click();
-    }
-  }
-
   function onDateChange(value: string) {
     // value is YYYY-MM-DD
     const next = new Date(`${value}T00:00:00`);
@@ -93,15 +80,19 @@ export function TodayScreen({ mode }: TodayScreenProps) {
             className="sr-only"
             aria-label="Select date"
           />
-
-          <button
-            type="button"
-            onClick={openDatePicker}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-foreground hover:bg-muted"
-            aria-label="Open calendar"
-          >
-            <Calendar className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <DatePopover
+            value={selectedDate}
+            onChange={setSelectedDate}
+            trigger={
+              <button
+                type="button"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-foreground hover:bg-muted"
+                aria-label="Open calendar"
+              >
+                <Calendar className="h-5 w-5" aria-hidden="true" />
+              </button>
+            }
+          />
 
           <button
             type="button"
