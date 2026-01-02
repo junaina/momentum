@@ -8,6 +8,8 @@ import {
 } from "@/features/today/schema";
 import { ModalSheet } from "@/features/today/components/ModalSheet";
 import { useCreateHabit } from "@/features/today/hooks/useCreateHabit";
+import { EmojiPickerPopover } from "@/features/today/components/EmojiPickerPopover";
+import { getRandomHabitEmoji } from "@/features/today/utils/randomEmoji";
 
 type Mode = "app" | "demo";
 
@@ -41,7 +43,7 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
   const [description, setDescription] = useState<string>("");
   const [frequency, setFrequency] =
     useState<CreateHabitInput["frequency"]>("daily");
-  const [emoji, setEmoji] = useState<string>("✅");
+  const [emoji, setEmoji] = useState<string>("");
   const [weeklyTarget, setWeeklyTarget] = useState<number>(5);
   const [scheduledDays, setScheduledDays] = useState<DayOfWeek[]>([
     "mon",
@@ -109,7 +111,15 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
     }
 
     try {
-      await mutation.mutateAsync(parsed.data);
+      const data = parsed.data;
+
+      // If user didn't choose an emoji, pick one automatically on submit
+      const finalPayload: CreateHabitInput =
+        data.emoji && data.emoji.trim().length > 0
+          ? data
+          : { ...data, emoji: getRandomHabitEmoji() };
+
+      await mutation.mutateAsync(finalPayload);
 
       // Later: invalidate Today queries here so the new habit appears instantly.
       // Example: queryClient.invalidateQueries({ queryKey: ["today", selectedDateKey] });
@@ -241,17 +251,11 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
               className="text-sm font-medium text-foreground"
               htmlFor="habit-emoji"
             >
-              Emoji
+              Emoji (optional)
             </label>
-            <input
-              id="habit-emoji"
-              value={emoji}
-              onChange={(e) => setEmoji(e.currentTarget.value)}
-              className="h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-              placeholder="✅"
-              inputMode="text"
-              autoComplete="off"
-            />
+
+            <EmojiPickerPopover value={emoji} onChange={setEmoji} />
+
             {fieldErrors.emoji ? (
               <p className="text-sm text-destructive">{fieldErrors.emoji}</p>
             ) : null}

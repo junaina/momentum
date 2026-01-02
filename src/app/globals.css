@@ -90,6 +90,7 @@
   --momentum-page-max: 52rem;
   --momentum-page-padding: 1rem;
   --momentum-sheet-max-h: 90vh;
+  --emoji-mart-border-radius: 16px;
 }
 
 .dark {

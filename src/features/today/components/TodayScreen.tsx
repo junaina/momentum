@@ -64,7 +64,7 @@ export function TodayScreen({ mode }: TodayScreenProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[var(--momentum-page-max)] px-[var(--momentum-page-padding)] py-6">
+    <div className="mx-auto w-full max-w-(--momentum-page-max) px(--momentum-page-padding) py-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">

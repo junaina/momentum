@@ -23,7 +23,16 @@ export const createHabitInputSchema = z.object({
     .optional()
     .or(z.literal("")),
   frequency: habitFrequencySchema,
-  emoji: z.string().trim().min(1, "Emo"),
+  emoji: z
+    .string()
+    .trim()
+    .max(8, "emoji is too long")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => {
+      const s = (v ?? "").trim();
+      return s.length > 0 ? s : undefined;
+    }),
   weeklyTarget: z
     .number()
     .int()

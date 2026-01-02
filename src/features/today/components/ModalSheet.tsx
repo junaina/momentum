@@ -1,7 +1,9 @@
 "use client";
-import { KeyboardEvent, useEffect } from "react";
+
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+
 type ModalSheetProps = {
   open: boolean;
   title: string;
@@ -10,29 +12,36 @@ type ModalSheetProps = {
   children: React.ReactNode;
   footer?: React.ReactNode;
 };
+
 function useLockBodyScroll(locked: boolean) {
   useEffect(() => {
     if (!locked) return;
 
-    const original = (document.body.style.overflow = "hidden");
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     return () => {
-      document.body.style.overflow = "original";
+      document.body.style.overflow = originalOverflow;
     };
   }, [locked]);
 }
 
 export function ModalSheet(props: ModalSheetProps) {
   const { open, title, description, onClose, children, footer } = props;
+
   useLockBodyScroll(open);
+
   useEffect(() => {
     if (!open) return;
 
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
+
   if (!open) return null;
 
   return createPortal(
@@ -42,17 +51,18 @@ export function ModalSheet(props: ModalSheetProps) {
       aria-modal="true"
       aria-label={title}
     >
-      {/*overlay*/}
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-        aria-label="Close"
-      ></button>
+      {/* overlay (non-focusable) */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        onPointerDown={onClose}
+      />
+
       <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-(--momentum-page-max) px-(--momentum-page-padding) md:inset-0 md:flex md:items-center md:justify-center">
         <div
-          className="w-full rounded-t-3xl border border-border bg-card text-card-foreground shadow-[var(--shadow-momentum)] md:rounded-3xl"
+          className="w-full rounded-t-3xl border border-border bg-card text-card-foreground shadow-(--shadow-momentum) md:rounded-3xl"
           style={{ maxHeight: "var(--momentum-sheet-max-h)" }}
+          onPointerDown={(e) => e.stopPropagation()} // prevents overlay-close when interacting inside
         >
           <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4">
             <div className="min-w-0">
@@ -63,6 +73,7 @@ export function ModalSheet(props: ModalSheetProps) {
                 </p>
               ) : null}
             </div>
+
             <button
               type="button"
               onClick={onClose}
@@ -72,9 +83,11 @@ export function ModalSheet(props: ModalSheetProps) {
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
+
           <div className="max-h-[calc(var(--momentum-sheet-max-h)-132px)] overflow-auto px-4 py-4">
             {children}
           </div>
+
           {footer ? (
             <div className="border-t border-border px-4 py-4">{footer}</div>
           ) : null}
