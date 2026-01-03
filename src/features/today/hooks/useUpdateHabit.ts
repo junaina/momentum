@@ -2,13 +2,13 @@
 
 import { useMutation } from "@tanstack/react-query";
 import type { UpdateHabitInput } from "@/features/today/schema";
-import type { TodayHabit } from "@/features/today/types";
+import type { Mode, TodayHabit } from "@/features/today/types";
 
-type Mode = "app" | "demo";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 async function updateHabitStub(input: UpdateHabitInput): Promise<TodayHabit> {
-  // In demo: pretend backend saved it and return a shape the UI expects.
-  // The caller will merge this into cached Today list.
   return {
     id: input.id,
     name: input.name,
@@ -30,20 +30,39 @@ async function updateHabitStub(input: UpdateHabitInput): Promise<TodayHabit> {
 
 async function updateHabitApi(
   mode: Mode,
-  input: UpdateHabitInput
+  input: UpdateHabitInput,
+  dateKey: string
 ): Promise<TodayHabit> {
   if (mode === "demo") return updateHabitStub(input);
 
-  // Later:
-  // const res = await fetch(`/api/habits/${input.id}`, { method: "PATCH", headers: {...}, body: JSON.stringify(input) })
-  // if (!res.ok) throw new Error("Failed to update habit");
-  // return (await res.json()) as TodayHabit;
+  const qs = new URLSearchParams();
+  qs.set("date", dateKey);
 
-  return updateHabitStub(input);
+  const res = await fetch(`/api/habits/${encodeURIComponent(input.id)}?${qs}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const json: unknown = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const message =
+      isRecord(json) && typeof json.error === "string"
+        ? json.error
+        : "Failed to update habit";
+    throw new Error(message);
+  }
+
+  return json as TodayHabit;
 }
 
-export function useUpdateHabit(mode: Mode) {
+export function useUpdateHabit(mode: Mode, dateKey: string) {
   return useMutation<TodayHabit, Error, UpdateHabitInput>({
-    mutationFn: (input) => updateHabitApi(mode, input),
+    mutationFn: (input) => updateHabitApi(mode, input, dateKey),
   });
 }

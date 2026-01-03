@@ -9,8 +9,10 @@ import { HabitDetailSheet } from "@/features/today/components/HabitDetailSheet";
 import {
   useTodayHabits,
   todayHabitsQueryKey,
+  type TodayHabitsStatus,
 } from "@/features/today/hooks/useTodayHabits";
 import { useUpdateHabit } from "@/features/today/hooks/useUpdateHabit";
+import { useDeleteHabit } from "@/features/today/hooks/useDeleteHabit";
 import { toDateKey } from "@/features/today/utils/dateKey";
 
 type TodayHabitsPanelProps = {
@@ -24,17 +26,25 @@ function sortForToday(items: TodayHabit[]): TodayHabit[] {
     (a, b) => Number(a.completedToday) - Number(b.completedToday)
   );
 }
-
+function matchesStatusFilter(
+  h: TodayHabit,
+  status: TodayHabitsStatus
+): boolean {
+  if (status === "all") return true;
+  return h.status === status;
+}
 export function TodayHabitsPanel({
   mode,
   date,
   onCreateHabit,
 }: TodayHabitsPanelProps) {
   const dateKey = toDateKey(date);
+  const status: TodayHabitsStatus = "active"; //later: add filter
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useTodayHabits(mode, date);
-  const updateMutation = useUpdateHabit(mode);
+  const { data, isLoading } = useTodayHabits(mode, date, status);
+  const updateMutation = useUpdateHabit(mode, dateKey);
+  const deleteMutation = useDeleteHabit(mode);
 
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
   const [activeHabitId, setActiveHabitId] = useState<string>("");
@@ -52,7 +62,7 @@ export function TodayHabitsPanel({
   }, [items]);
 
   function setCachedItems(nextItems: TodayHabit[]) {
-    queryClient.setQueryData(todayHabitsQueryKey(mode, dateKey), {
+    queryClient.setQueryData(todayHabitsQueryKey(mode, dateKey, status), {
       items: nextItems,
     });
   }
@@ -74,7 +84,6 @@ export function TodayHabitsPanel({
   }
 
   async function saveDetail(input: UpdateHabitInput) {
-    // Optimistically merge editable fields into cached list (keep completedToday + stats intact)
     const current = data?.items ?? [];
     const target = current.find((h) => h.id === input.id);
     if (!target) return;
@@ -95,27 +104,45 @@ export function TodayHabitsPanel({
       visibility: input.visibility,
     };
 
-    setCachedItems(current.map((h) => (h.id === input.id ? optimistic : h)));
+    const optimisticNext = current
+      .map((h) => (h.id === input.id ? optimistic : h))
+      .filter((h) => matchesStatusFilter(h, status));
 
-    // Then "save" (stubbed for now) — if it fails, we rollback.
+    setCachedItems(optimisticNext);
+
     try {
       const saved = await updateMutation.mutateAsync(input);
-      // Merge backend response if needed (currently stub)
-      setCachedItems(
-        (
-          queryClient.getQueryData(todayHabitsQueryKey(mode, dateKey)) as
-            | { items: TodayHabit[] }
-            | undefined
-        )?.items.map((h) => (h.id === input.id ? { ...h, ...saved } : h)) ??
-          current
-      );
+
+      const after = (
+        queryClient.getQueryData(todayHabitsQueryKey(mode, dateKey, status)) as
+          | { items: TodayHabit[] }
+          | undefined
+      )?.items;
+
+      const merged =
+        (after ?? optimisticNext)
+          .map((h) => (h.id === input.id ? { ...h, ...saved } : h))
+          .filter((h) => matchesStatusFilter(h, status)) ?? optimisticNext;
+
+      setCachedItems(merged);
     } catch (e) {
-      // rollback on error
       setCachedItems(current);
       throw e;
     }
   }
+  async function deleteHabit(habitId: string) {
+    const current = data?.items ?? [];
+    setCachedItems(current.filter((h) => h.id !== habitId));
 
+    try {
+      await deleteMutation.mutateAsync(habitId);
+      setDetailOpen(false);
+      setActiveHabitId("");
+    } catch (e) {
+      setCachedItems(current);
+      throw e;
+    }
+  }
   return (
     <section className="mt-6">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -158,6 +185,7 @@ export function TodayHabitsPanel({
           onOpenChange={setDetailOpen}
           habit={activeHabit}
           onSave={saveDetail}
+          onDelete={deleteHabit}
         />
       ) : null}
     </section>

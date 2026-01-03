@@ -145,6 +145,13 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
           : { ...data, emoji: getRandomHabitEmoji() };
 
       const created = await mutation.mutateAsync(finalPayload);
+      if (mode === "app" && props.activeDate) {
+        const dateKey = toDateKey(props.activeDate);
+        // invalidate all status variants for that day
+        await queryClient.invalidateQueries({
+          queryKey: ["todayHabits", "app", dateKey],
+        });
+      }
 
       if (mode === "demo" && props.activeDate) {
         const dateKey = toDateKey(props.activeDate);
@@ -184,7 +191,7 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
           };
 
           queryClient.setQueryData<TodayHabitsResult>(
-            todayHabitsQueryKey("demo", dateKey),
+            todayHabitsQueryKey("demo", dateKey, "active"), //this will change when we implement filters
             (prev) => {
               const items = prev?.items ?? [];
               return { items: [newHabit, ...items] };

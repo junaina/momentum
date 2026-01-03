@@ -19,6 +19,7 @@ type HabitDetailSheetProps = {
   onOpenChange: (open: boolean) => void;
   habit: TodayHabit;
   onSave: (input: UpdateHabitInput) => Promise<void>;
+  onDelete?: (habitId: string) => Promise<void>;
 };
 
 const days: Array<{ key: DayOfWeek; label: string }> = [
@@ -51,7 +52,7 @@ function uniqDays(input: DayOfWeek[]): DayOfWeek[] {
 }
 
 export function HabitDetailSheet(props: HabitDetailSheetProps) {
-  const { open, onOpenChange, habit, onSave } = props;
+  const { open, onOpenChange, habit, onSave, onDelete } = props;
 
   const [name, setName] = useState<string>(habit.name);
   const [description, setDescription] = useState<string>(
@@ -151,9 +152,39 @@ export function HabitDetailSheet(props: HabitDetailSheetProps) {
       setSaving(false);
     }
   }
+  async function onDeleteClick() {
+    if (!onDelete) return;
+    setFormError("");
+    setFieldErrors({});
+
+    const ok = window.confirm("Delete this habit? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      setSaving(true);
+      await onDelete(habit.id);
+      close();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Something went wrong";
+      setFormError(message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const footer = (
     <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      {onDelete ? (
+        <button
+          type="button"
+          onClick={onDeleteClick}
+          disabled={saving}
+          className="inline-flex h-11 items-center justify-center rounded-2xl border border-destructive/40 bg-destructive/10 px-4 text-sm font-semibold text-foreground hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Delete habit
+        </button>
+      ) : null}
+
       <button
         type="button"
         onClick={close}
@@ -161,6 +192,7 @@ export function HabitDetailSheet(props: HabitDetailSheetProps) {
       >
         Close
       </button>
+
       <button
         type="button"
         onClick={submit}
