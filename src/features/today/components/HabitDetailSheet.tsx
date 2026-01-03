@@ -2,30 +2,23 @@
 
 import { useMemo, useState } from "react";
 import {
-  createHabitInputSchema,
-  type CreateHabitInput,
+  updateHabitInputSchema,
   type DayOfWeek,
+  type HabitColorToken,
+  type HabitStatus,
+  type HabitVisibility,
+  type UpdateHabitInput,
 } from "@/features/today/schema";
-import { ModalSheet } from "@/features/today/components/ModalSheet";
-import { useCreateHabit } from "@/features/today/hooks/useCreateHabit";
-import { EmojiPickerPopover } from "@/features/today/components/EmojiPickerPopover";
-import { getRandomHabitEmoji } from "@/features/today/utils/randomEmoji";
-import { TimePopover } from "@/features/today/components/TimePopover";
-import { useQueryClient } from "@tanstack/react-query";
-import { toDateKey } from "@/features/today/utils/dateKey";
-import {
-  todayHabitsQueryKey,
-  type TodayHabitsResult,
-} from "@/features/today/hooks/useTodayHabits";
 import type { TodayHabit } from "@/features/today/types";
+import { ModalSheet } from "@/features/today/components/ModalSheet";
+import { EmojiPickerPopover } from "@/features/today/components/EmojiPickerPopover";
+import { TimePopover } from "@/features/today/components/TimePopover";
 
-type Mode = "app" | "demo";
-
-type CreateHabitSheetProps = {
-  mode: Mode;
+type HabitDetailSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  activeDate?: Date;
+  habit: TodayHabit;
+  onSave: (input: UpdateHabitInput) => Promise<void>;
 };
 
 const days: Array<{ key: DayOfWeek; label: string }> = [
@@ -38,58 +31,64 @@ const days: Array<{ key: DayOfWeek; label: string }> = [
   { key: "sun", label: "Sun" },
 ];
 
+const colorTokens: HabitColorToken[] = [
+  "mint",
+  "sky",
+  "violet",
+  "amber",
+  "rose",
+  "lime",
+  "slate",
+  "cyan",
+];
+
+function colorVar(token: HabitColorToken): string {
+  return `var(--momentum-habit-color-${token})`;
+}
+
 function uniqDays(input: DayOfWeek[]): DayOfWeek[] {
-  const set = new Set<DayOfWeek>(input);
-  return Array.from(set);
-}
-function dayOfWeekFromDate(date: Date): DayOfWeek {
-  const d = date.getDay();
-  if (d === 0) return "sun";
-  if (d === 1) return "mon";
-  if (d === 2) return "tue";
-  if (d === 3) return "wed";
-  if (d === 4) return "thu";
-  if (d === 5) return "fri";
-  return "sat";
+  return Array.from(new Set<DayOfWeek>(input));
 }
 
-function shouldAppearOnDate(input: CreateHabitInput, date: Date): boolean {
-  const dow = dayOfWeekFromDate(date);
-  return input.scheduledDays.includes(dow);
-}
+export function HabitDetailSheet(props: HabitDetailSheetProps) {
+  const { open, onOpenChange, habit, onSave } = props;
 
-export function CreateHabitSheet(props: CreateHabitSheetProps) {
-  const { mode, open, onOpenChange } = props;
-  const queryClient = useQueryClient();
-
-  const mutation = useCreateHabit(mode);
-
-  const [name, setName] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [frequency, setFrequency] =
-    useState<CreateHabitInput["frequency"]>("daily");
-  const [emoji, setEmoji] = useState<string>("");
-  const [weeklyTarget, setWeeklyTarget] = useState<number>(5);
-  const [scheduledDays, setScheduledDays] = useState<DayOfWeek[]>([
-    "mon",
-    "tue",
-    "wed",
-    "thu",
-    "fri",
-  ]);
-  const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
-  const [reminderTime, setReminderTime] = useState<string>("09:00");
+  const [name, setName] = useState<string>(habit.name);
+  const [description, setDescription] = useState<string>(
+    habit.description ?? ""
+  );
+  const [frequency, setFrequency] = useState<UpdateHabitInput["frequency"]>(
+    habit.frequency
+  );
+  const [emoji, setEmoji] = useState<string>(habit.emoji);
+  const [weeklyTarget, setWeeklyTarget] = useState<number>(habit.weeklyTarget);
+  const [scheduledDays, setScheduledDays] = useState<DayOfWeek[]>(
+    habit.scheduledDays
+  );
+  const [reminderEnabled, setReminderEnabled] = useState<boolean>(
+    habit.reminderEnabled
+  );
+  const [reminderTime, setReminderTime] = useState<string>(
+    habit.reminderTime ?? "09:00"
+  );
+  const [colorToken, setColorToken] = useState<HabitColorToken>(
+    habit.colorToken
+  );
+  const [startDate, setStartDate] = useState<string>(habit.startDate ?? "");
+  const [status, setStatus] = useState<HabitStatus>(habit.status);
+  const [visibility, setVisibility] = useState<HabitVisibility>(
+    habit.visibility
+  );
 
   const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<keyof CreateHabitInput, string>>
+    Partial<Record<keyof UpdateHabitInput, string>>
   >({});
   const [formError, setFormError] = useState<string>("");
+  const [saving, setSaving] = useState<boolean>(false);
 
-  const computedDescription = useMemo(() => {
-    return mode === "demo"
-      ? "This is the demo flow (seeded later). Your UI should behave the same as the real app."
-      : "Create a habit that will appear on Today based on its schedule.";
-  }, [mode]);
+  const descriptionText = useMemo(() => {
+    return "Edit everything about this habit here. (Backend wiring comes later.)";
+  }, []);
 
   function close() {
     onOpenChange(false);
@@ -106,27 +105,33 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
     });
   }
 
-  async function onSubmit() {
+  async function submit() {
     setFormError("");
     setFieldErrors({});
 
-    const payload: CreateHabitInput = {
+    const payload: UpdateHabitInput = {
+      id: habit.id,
       name,
       description,
       frequency,
       emoji,
       weeklyTarget,
       scheduledDays,
+      reminderEnabled,
       reminderTime: reminderEnabled ? reminderTime : "",
+      colorToken,
+      startDate,
+      status,
+      visibility,
     };
 
-    const parsed = createHabitInputSchema.safeParse(payload);
+    const parsed = updateHabitInputSchema.safeParse(payload);
     if (!parsed.success) {
-      const nextErrors: Partial<Record<keyof CreateHabitInput, string>> = {};
+      const nextErrors: Partial<Record<keyof UpdateHabitInput, string>> = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
         if (typeof key === "string") {
-          const k = key as keyof CreateHabitInput;
+          const k = key as keyof UpdateHabitInput;
           if (!nextErrors[k]) nextErrors[k] = issue.message;
         }
       }
@@ -136,69 +141,14 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
     }
 
     try {
-      const data = parsed.data;
-
-      // If user didn't choose an emoji, pick one automatically on submit
-      const finalPayload: CreateHabitInput =
-        data.emoji && data.emoji.trim().length > 0
-          ? data
-          : { ...data, emoji: getRandomHabitEmoji() };
-
-      const created = await mutation.mutateAsync(finalPayload);
-
-      if (mode === "demo" && props.activeDate) {
-        const dateKey = toDateKey(props.activeDate);
-
-        // only insert it into today's list if it should appear on that selected day
-        if (shouldAppearOnDate(finalPayload, props.activeDate)) {
-          const newHabit: TodayHabit = {
-            id: created.id,
-            name: finalPayload.name,
-            description: finalPayload.description || "",
-            emoji: finalPayload.emoji ?? getRandomHabitEmoji(),
-
-            // pick a default token for now (you can randomize later)
-            colorToken: "mint",
-
-            frequency: finalPayload.frequency,
-
-            // Prisma weeklyTarget is nullable; for daily this is not needed
-            weeklyTarget:
-              finalPayload.frequency === "weekly"
-                ? finalPayload.weeklyTarget
-                : 0,
-
-            scheduledDays: finalPayload.scheduledDays,
-
-            reminderEnabled:
-              typeof finalPayload.reminderTime === "string" &&
-              finalPayload.reminderTime.trim().length > 0,
-            reminderTime: finalPayload.reminderTime || "",
-
-            startDate: "",
-            status: "active",
-            visibility: "private",
-
-            completedToday: false,
-            stats: { totalCompletions: 0, currentStreakDays: 0 },
-          };
-
-          queryClient.setQueryData<TodayHabitsResult>(
-            todayHabitsQueryKey("demo", dateKey),
-            (prev) => {
-              const items = prev?.items ?? [];
-              return { items: [newHabit, ...items] };
-            }
-          );
-        }
-      }
-
+      setSaving(true);
+      await onSave(parsed.data);
       close();
-
-      // Optional later: toast("Habit created")
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
       setFormError(message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -209,15 +159,15 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
         onClick={close}
         className="inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted"
       >
-        Cancel
+        Close
       </button>
       <button
         type="button"
-        onClick={onSubmit}
-        disabled={mutation.isPending}
+        onClick={submit}
+        disabled={saving}
         className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {mutation.isPending ? "Creating…" : "Create habit"}
+        {saving ? "Saving…" : "Save changes"}
       </button>
     </div>
   );
@@ -226,8 +176,8 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
     <ModalSheet
       open={open}
       onClose={close}
-      title="Create habit"
-      description={computedDescription}
+      title="Habit details"
+      description={descriptionText}
       footer={footer}
     >
       <div className="space-y-5">
@@ -241,16 +191,15 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
         <div className="space-y-2">
           <label
             className="text-sm font-medium text-foreground"
-            htmlFor="habit-name"
+            htmlFor="habit-name-edit"
           >
             Name
           </label>
           <input
-            id="habit-name"
+            id="habit-name-edit"
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
             className="h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-            placeholder="e.g., Drink water"
             autoComplete="off"
           />
           {fieldErrors.name ? (
@@ -262,22 +211,67 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
         <div className="space-y-2">
           <label
             className="text-sm font-medium text-foreground"
-            htmlFor="habit-desc"
+            htmlFor="habit-desc-edit"
           >
             Description (optional)
           </label>
           <textarea
-            id="habit-desc"
+            id="habit-desc-edit"
             value={description}
             onChange={(e) => setDescription(e.currentTarget.value)}
             className="min-h-24 w-full resize-none rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-            placeholder="Why this habit matters (kept private)"
           />
           {fieldErrors.description ? (
             <p className="text-sm text-destructive">
               {fieldErrors.description}
             </p>
           ) : null}
+        </div>
+
+        {/* Emoji + Color */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-foreground">Emoji</div>
+            <EmojiPickerPopover value={emoji} onChange={setEmoji} />
+            {fieldErrors.emoji ? (
+              <p className="text-sm text-destructive">{fieldErrors.emoji}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-foreground">Color</div>
+            <div className="flex flex-wrap gap-2">
+              {colorTokens.map((t) => {
+                const active = t === colorToken;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setColorToken(t)}
+                    className={[
+                      "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
+                      active
+                        ? "border-ring bg-accent"
+                        : "border-border bg-background hover:bg-muted",
+                    ].join(" ")}
+                    aria-pressed={active}
+                    aria-label={`Set color ${t}`}
+                  >
+                    <span
+                      className="h-4 w-4 rounded-full"
+                      style={{ backgroundColor: colorVar(t) }}
+                      aria-hidden="true"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            {fieldErrors.colorToken ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.colorToken}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         {/* Frequency */}
@@ -314,45 +308,28 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
           ) : null}
         </div>
 
-        {/* Emoji + Weekly target */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-foreground"
-              htmlFor="habit-emoji"
-            >
-              Emoji (optional)
-            </label>
-
-            <EmojiPickerPopover value={emoji} onChange={setEmoji} />
-
-            {fieldErrors.emoji ? (
-              <p className="text-sm text-destructive">{fieldErrors.emoji}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-foreground"
-              htmlFor="weekly-target"
-            >
-              Weekly target (days / week)
-            </label>
-            <input
-              id="weekly-target"
-              type="number"
-              min={1}
-              max={7}
-              value={weeklyTarget}
-              onChange={(e) => setWeeklyTarget(Number(e.currentTarget.value))}
-              className="h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-            />
-            {fieldErrors.weeklyTarget ? (
-              <p className="text-sm text-destructive">
-                {fieldErrors.weeklyTarget}
-              </p>
-            ) : null}
-          </div>
+        {/* Weekly target */}
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-foreground"
+            htmlFor="weekly-target-edit"
+          >
+            Weekly target (days / week)
+          </label>
+          <input
+            id="weekly-target-edit"
+            type="number"
+            min={1}
+            max={7}
+            value={weeklyTarget}
+            onChange={(e) => setWeeklyTarget(Number(e.currentTarget.value))}
+            className="h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+          />
+          {fieldErrors.weeklyTarget ? (
+            <p className="text-sm text-destructive">
+              {fieldErrors.weeklyTarget}
+            </p>
+          ) : null}
         </div>
 
         {/* Scheduled days */}
@@ -392,10 +369,6 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
             })}
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            These are the days this habit appears on Today as a todo.
-          </p>
-
           {fieldErrors.scheduledDays ? (
             <p className="text-sm text-destructive">
               {fieldErrors.scheduledDays}
@@ -418,7 +391,7 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
                   : "border-border bg-background text-foreground hover:bg-muted",
               ].join(" ")}
             >
-              No specific time
+              Off
             </button>
 
             <button
@@ -445,6 +418,70 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
               ) : null}
             </div>
           ) : null}
+        </div>
+
+        {/* Start date */}
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-foreground"
+            htmlFor="start-date-edit"
+          >
+            Start date (optional)
+          </label>
+          <input
+            id="start-date-edit"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.currentTarget.value)}
+            className="h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+          />
+          {fieldErrors.startDate ? (
+            <p className="text-sm text-destructive">{fieldErrors.startDate}</p>
+          ) : null}
+        </div>
+
+        {/* Status */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-foreground">Status</div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["active", "paused", "archived"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatus(s)}
+                className={[
+                  "h-10 rounded-2xl border px-3 text-sm font-medium",
+                  status === s
+                    ? "border-ring bg-accent text-accent-foreground"
+                    : "border-border bg-background text-foreground hover:bg-muted",
+                ].join(" ")}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Visibility */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-foreground">Visibility</div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["private", "friends", "public"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setVisibility(v)}
+                className={[
+                  "h-10 rounded-2xl border px-3 text-sm font-medium",
+                  visibility === v
+                    ? "border-ring bg-accent text-accent-foreground"
+                    : "border-border bg-background text-foreground hover:bg-muted",
+                ].join(" ")}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </ModalSheet>

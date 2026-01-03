@@ -9,7 +9,19 @@ export const dayOfWeekSchema = z.enum([
   "sun",
 ]);
 export const habitFrequencySchema = z.enum(["daily", "weekly"]);
-
+// Tokenized colors (so UI never hardcodes colors)
+export const habitColorTokenSchema = z.enum([
+  "mint",
+  "sky",
+  "violet",
+  "amber",
+  "rose",
+  "lime",
+  "slate",
+  "cyan",
+]);
+export const habitStatusSchema = z.enum(["active", "paused", "archived"]);
+export const habitVisibilitySchema = z.enum(["private", "friends", "public"]);
 export const createHabitInputSchema = z.object({
   name: z
     .string()
@@ -47,6 +59,29 @@ export const createHabitInputSchema = z.object({
     .optional()
     .or(z.literal("")),
 });
+export const updateHabitInputSchema = z.object({
+  id: z.string().min(1, "habit id is required"),
+  name: createHabitInputSchema.shape.name,
+  description: createHabitInputSchema.shape.description,
+  frequency: createHabitInputSchema.shape.frequency,
+  emoji: createHabitInputSchema.shape.emoji,
+  weeklyTarget: createHabitInputSchema.shape.weeklyTarget,
+  scheduledDays: createHabitInputSchema.shape.scheduledDays,
+  reminderEnabled: z.boolean(),
+  reminderTime: createHabitInputSchema.shape.reminderTime,
+  colorToken: habitColorTokenSchema,
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .optional()
+    .or(z.literal("")),
+  status: habitStatusSchema,
+  visibility: habitVisibilitySchema,
+});
 export type CreateHabitInput = z.infer<typeof createHabitInputSchema>;
+export type UpdateHabitInput = z.infer<typeof updateHabitInputSchema>;
 export type DayOfWeek = z.infer<typeof dayOfWeekSchema>;
 export type HabitFrequency = z.infer<typeof habitFrequencySchema>;
+export type HabitColorToken = z.infer<typeof habitColorTokenSchema>;
+export type HabitStatus = z.infer<typeof habitStatusSchema>;
+export type HabitVisibility = z.infer<typeof habitVisibilitySchema>;

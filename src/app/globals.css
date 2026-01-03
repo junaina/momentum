@@ -91,6 +91,20 @@
   --momentum-page-padding: 1rem;
   --momentum-sheet-max-h: 90vh;
   --emoji-mart-border-radius: 16px;
+  /* Today habit card sizing */
+  --momentum-habit-check: 2.75rem;
+  --momentum-habit-emoji: 2.5rem;
+  --momentum-habit-skel-h: 4.75rem;
+
+  /* Habit color tokens */
+  --momentum-habit-color-mint: hsl(154 62% 50%);
+  --momentum-habit-color-sky: hsl(199 89% 55%);
+  --momentum-habit-color-violet: hsl(259 86% 60%);
+  --momentum-habit-color-amber: hsl(43 96% 56%);
+  --momentum-habit-color-rose: hsl(346 77% 56%);
+  --momentum-habit-color-lime: hsl(84 81% 44%);
+  --momentum-habit-color-slate: hsl(215 16% 47%);
+  --momentum-habit-color-cyan: hsl(188 86% 53%);
 }
 
 .dark {
@@ -154,5 +168,28 @@
       hsl(152 54% 39% / 0.25),
       transparent 65%
     );
+  }
+  /* Card accent driven by: style={{ "--habit-accent": "…" }} */
+  .momentum-habit-card {
+    border: 1px solid
+      color-mix(in oklab, var(--habit-accent) 40%, var(--border));
+    background: linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--habit-accent) 16%, transparent),
+        transparent 60%
+      ),
+      var(--card);
+    box-shadow: 0 0 0 1px
+        color-mix(in oklab, var(--habit-accent) 20%, transparent),
+      var(--shadow-momentum);
+  }
+
+  .momentum-habit-card:hover {
+    background: linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--habit-accent) 22%, transparent),
+        transparent 60%
+      ),
+      var(--card);
   }
 }

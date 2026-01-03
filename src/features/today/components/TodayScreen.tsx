@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Calendar, Plus } from "lucide-react";
 import { CreateHabitSheet } from "@/features/today/components/CreateHabitSheet";
 import { DatePopover } from "@/features/today/components/DatePopover";
+import { TodayHabitsPanel } from "@/features/today/components/TodayHabitsPanel";
 
 type Mode = "app" | "demo";
 
@@ -105,18 +106,17 @@ export function TodayScreen({ mode }: TodayScreenProps) {
         </div>
       </div>
 
-      {/* Body placeholder (we’ll add habits list next) */}
-      <div className="mt-6 rounded-3xl border border-border bg-card p-5 text-card-foreground shadow-(--shadow-momentum)">
-        <div className="text-sm text-muted-foreground">
-          Habits list coming next — we’ll render scheduled items for the
-          selected date here.
-        </div>
-      </div>
+      <TodayHabitsPanel
+        mode={mode}
+        date={selectedDate}
+        onCreateHabit={() => setCreateOpen(true)}
+      />
 
       <CreateHabitSheet
         mode={mode}
         open={createOpen}
         onOpenChange={setCreateOpen}
+        activeDate={selectedDate}
       />
     </div>
   );
