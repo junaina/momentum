@@ -53,7 +53,9 @@ export function HabitCard({
                   <div
                     className={[
                       "truncate text-sm font-semibold text-foreground",
-                      done ? "line-through decoration-muted-foreground/60" : "",
+                      done
+                        ? "line-through decoration-(--momentum-shadow) decoration-4"
+                        : "",
                     ].join(" ")}
                   >
                     {habit.name}
