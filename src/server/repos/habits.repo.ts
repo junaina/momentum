@@ -16,6 +16,8 @@ export type DbHabitForToday = {
 
   startDate: Date | null;
   status: "active" | "paused" | "archived";
+  pausedAt: Date | null;
+  archivedAt: Date | null;
   visibility: "private" | "friends" | "public";
 
   createdAt: Date;
@@ -38,6 +40,8 @@ export type DbHabitWithLogForDate = {
 
   startDate: Date | null;
   status: "active" | "paused" | "archived";
+  pausedAt: Date | null;
+  archivedAt: Date | null;
   visibility: "private" | "friends" | "public";
 
   logs: Array<{ completedAt: Date | null }>;
@@ -77,6 +81,8 @@ export async function findHabitsForToday(
 
       startDate: true,
       status: true,
+      pausedAt: true,
+      archivedAt: true,
       visibility: true,
 
       createdAt: true,
@@ -170,6 +176,8 @@ export async function updateHabitForUser(input: {
       reminderTime: true,
       startDate: true,
       status: true,
+      pausedAt: true,
+      archivedAt: true,
       visibility: true,
       logs: {
         where: { logDate: input.logDate },

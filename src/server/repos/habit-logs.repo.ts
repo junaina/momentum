@@ -6,6 +6,38 @@ function dateKeyToUtcDate(dateKey: string): Date {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
+function dateToDateKeyUtc(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export async function findCompletedLogDateKeysInRange(input: {
+  userId: string;
+  habitIds: readonly string[];
+  fromDateKey: string;
+  toDateKey: string;
+}): Promise<Array<{ habitId: string; dateKey: string }>> {
+  const from = dateKeyToUtcDate(input.fromDateKey);
+  const to = dateKeyToUtcDate(input.toDateKey);
+
+  const rows = await prisma.habitLog.findMany({
+    where: {
+      userId: input.userId,
+      habitId: { in: [...input.habitIds] },
+      completedAt: { not: null },
+      logDate: { gte: from, lte: to },
+    },
+    select: { habitId: true, logDate: true },
+  });
+
+  return rows.map((r) => ({
+    habitId: r.habitId,
+    dateKey: dateToDateKeyUtc(r.logDate),
+  }));
+}
+
 export async function assertHabitOwnedByUser(input: {
   userId: string;
   habitId: string;
