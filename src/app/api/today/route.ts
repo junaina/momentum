@@ -32,15 +32,14 @@ export async function GET(req: NextRequest) {
     res.headers.set("Cache-Control", "no-store");
     return res;
   }
-
-  const items = await todayService.getTodayHabits({
+  const result = await todayService.getTodayHabitsResponse({
     userId: user.id,
     userTimezone: user.timezone ?? "UTC",
     date: parsed.data.date,
     status: parsed.data.status,
   });
 
-  const res = NextResponse.json({ items }, { status: 200 });
+  const res = NextResponse.json(result, { status: 200 });
   res.headers.set("Cache-Control", "no-store");
   return res;
 }

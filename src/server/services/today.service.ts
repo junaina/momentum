@@ -3,6 +3,16 @@ import * as habitsRepo from "@/server/repos/habits.repo";
 import { dbHabitToTodayHabit } from "@/server/mappers/habits.mapper";
 import { shouldHabitAppearOnDate } from "@/server/domain/habits/schedule";
 
+export type TodayHabitsMeta = {
+  //server computed today datekey in the user's timezone
+  todayKey: string;
+};
+
+export type TodayHabitResponse = {
+  items: TodayHabit[];
+  meta: TodayHabitsMeta;
+};
+
 function dateKeyToUtcDate(dateKey: string): Date {
   const [y, m, d] = dateKey.split("-").map((x) => Number(x));
   return new Date(Date.UTC(y, m - 1, d));
@@ -66,4 +76,16 @@ export async function getTodayHabits(input: {
       dateKey,
     })
   );
+}
+
+export async function getTodayHabitsResponse(input: {
+  userId: string;
+  userTimezone: string | null;
+  date?: string;
+  status?: StatusFilter;
+}): Promise<TodayHabitResponse> {
+  const timezone = input.userTimezone ?? "UTC";
+  const todayKey = todayDateKeyInTimeZone(timezone, new Date());
+  const items = await getTodayHabits(input);
+  return { items, meta: { todayKey } };
 }

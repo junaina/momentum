@@ -7,8 +7,13 @@ import { getDemoHabitsForDate } from "@/features/today/demo/todaySeed";
 
 export type TodayHabitsStatus = "active" | "paused" | "archived" | "all";
 
+export type TodayHabitsMeta = {
+  todayKey: string;
+};
+
 export type TodayHabitsResult = {
   items: TodayHabit[];
+  meta: TodayHabitsMeta;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -21,6 +26,10 @@ export function todayHabitsQueryKey(
   status: TodayHabitsStatus
 ) {
   return ["todayHabits", mode, dateKey, status] as const;
+}
+function fallbackMeta(): TodayHabitsMeta {
+  // used only if server is temporarily on the old response shape
+  return { todayKey: toDateKey(new Date()) };
 }
 
 async function fetchTodayHabitsApp(
@@ -47,10 +56,18 @@ async function fetchTodayHabitsApp(
     throw new Error(message);
   }
 
-  if (Array.isArray(json)) return { items: json as TodayHabit[] };
-  if (isRecord(json) && Array.isArray(json.items))
-    return { items: json.items as TodayHabit[] };
+  if (Array.isArray(json)) {
+    return { items: json as TodayHabit[], meta: fallbackMeta() };
+  }
+  if (isRecord(json) && Array.isArray(json.items)) {
+    const metaRaw = isRecord(json.meta) ? json.meta : null;
+    const todayKey =
+      metaRaw && typeof metaRaw.todayKey === "string"
+        ? metaRaw.todayKey
+        : fallbackMeta().todayKey;
 
+    return { items: json.items as TodayHabit[], meta: { todayKey } };
+  }
   throw new Error("Invalid response shape from /api/today");
 }
 
@@ -59,9 +76,10 @@ function fetchTodayHabitsDemo(
   status: TodayHabitsStatus
 ): TodayHabitsResult {
   const all = getDemoHabitsForDate(date);
+  const meta: TodayHabitsMeta = { todayKey: toDateKey(new Date()) };
 
-  if (status === "all") return { items: all };
-  return { items: all.filter((h) => h.status === status) };
+  if (status === "all") return { items: all, meta };
+  return { items: all.filter((h) => h.status === status), meta };
 }
 
 export function useTodayHabits(
