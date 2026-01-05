@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { id } = await habitsService.createHabit(user.id, parsed.data);
+    const { id } = await habitsService.createHabit({
+      userId: user.id,
+      userTimezone: user.timezone ?? "UTC",
+      body: parsed.data,
+    });
     const res = NextResponse.json({ id }, { status: 201 });
     res.headers.set("Cache-Control", "no-store");
     return res;

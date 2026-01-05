@@ -52,15 +52,25 @@ export class HabitNotFoundError extends Error {
   }
 }
 
-export async function createHabit(userId: string, body: CreateHabitBody) {
+export async function createHabit(input: {
+  userId: string;
+  userTimezone: string | null;
+  body: CreateHabitBody;
+}) {
+  const timezone = input.userTimezone ?? "UTC";
+  const dateKey = todayDateKeyInTimeZone(timezone, new Date());
+  const startDate = dateKeyToUtcDate(dateKey);
+
+  const body = input.body;
+
   const name = body.name.trim();
   const description =
     body.description && body.description.trim().length > 0
       ? body.description.trim()
       : null;
+
   const scheduledDays = body.scheduledDays.map(dayToInt);
-  // - daily: weeklyTarget = 1 (or ignore if provided)
-  // - weekly: weeklyTarget defaults to scheduledDays.length if not provided
+
   let weeklyTarget: number;
   if (body.frequency === "daily") {
     weeklyTarget = 1;
@@ -70,6 +80,7 @@ export async function createHabit(userId: string, body: CreateHabitBody) {
       throw new Error("Invalid weeklyTarget");
     }
   }
+
   const reminderEnabled = Boolean(
     body.reminderTime && body.reminderTime !== ""
   );
@@ -82,7 +93,7 @@ export async function createHabit(userId: string, body: CreateHabitBody) {
     body.emoji && body.emoji.trim().length > 0 ? body.emoji.trim() : null;
 
   const created = await habitsRepo.createHabit({
-    userId,
+    userId: input.userId,
     name,
     description,
     frequency: body.frequency,
@@ -91,9 +102,10 @@ export async function createHabit(userId: string, body: CreateHabitBody) {
     emoji,
     reminderEnabled,
     reminderTime,
+    startDate,
   });
 
-  return created; // { id }
+  return created;
 }
 
 export async function updateHabit(input: {
