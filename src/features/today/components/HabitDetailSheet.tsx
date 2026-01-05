@@ -88,7 +88,7 @@ export function HabitDetailSheet(props: HabitDetailSheetProps) {
   const [saving, setSaving] = useState<boolean>(false);
 
   const descriptionText = useMemo(() => {
-    return "Edit everything about this habit here. (Backend wiring comes later.)";
+    return "Edit everything about this habit here. ";
   }, []);
 
   function close() {

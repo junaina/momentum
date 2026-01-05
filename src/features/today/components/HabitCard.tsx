@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 
 type HabitCardProps = {
   habit: TodayHabit;
+  missed?: boolean;
   onToggleToday: (id: string) => void;
   onOpenDetail: (id: string) => void;
 };
@@ -15,6 +16,7 @@ function colorVar(token: string): string {
 }
 export function HabitCard({
   habit,
+  missed = false,
   onToggleToday,
   onOpenDetail,
 }: HabitCardProps) {
@@ -30,7 +32,12 @@ export function HabitCard({
       type="button"
       onClick={() => onOpenDetail(habit.id)}
       style={accentStyle}
-      className="momentum-habit-card w-full rounded-3xl p-4 text-left"
+      className={[
+        "momentum-habit-card w-full rounded-3xl p-4 text-left",
+        missed
+          ? "ring-2 ring-destructive ring-offset-2 ring-offset-background"
+          : "",
+      ].join(" ")}
     >
       <div className="flex items-start gap-3">
         <div

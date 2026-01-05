@@ -61,8 +61,7 @@ export function TodayScreen({ mode }: TodayScreenProps) {
           </h1>
           {mode === "demo" ? (
             <p className="mt-1 text-sm text-muted-foreground">
-              Demo mode — behaves like the real app, but uses seeded/stubbed
-              data.
+              This is just a demo. Features may be limited.
             </p>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">

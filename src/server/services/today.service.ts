@@ -1,7 +1,45 @@
 import type { TodayHabit } from "@/features/today/types";
+
 import * as habitsRepo from "@/server/repos/habits.repo";
 import { dbHabitToTodayHabit } from "@/server/mappers/habits.mapper";
 import { shouldHabitAppearOnDate } from "@/server/domain/habits/schedule";
+import { computeCurrentStreakDays } from "@/server/domain/streaks/currentStreak";
+import * as habitLogsRepo from "@/server/repos/habit-logs.repo";
+
+export type TodayHabitsMeta = {
+  //server computed today datekey in the user's timezone
+  todayKey: string;
+};
+
+export type TodayHabitResponse = {
+  items: TodayHabit[];
+  meta: TodayHabitsMeta;
+};
+function utcDateToDateKey(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function dateKeyInTimeZone(timeZone: string, at: Date): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  // en-CA yields YYYY-MM-DD reliably
+  return fmt.format(at);
+}
+
+function minDateKey(a: string, b: string): string {
+  return a <= b ? a : b;
+}
+
+function maxDateKey(a: string, b: string): string {
+  return a >= b ? a : b;
+}
 
 function dateKeyToUtcDate(dateKey: string): Date {
   const [y, m, d] = dateKey.split("-").map((x) => Number(x));
@@ -66,4 +104,121 @@ export async function getTodayHabits(input: {
       dateKey,
     })
   );
+}
+
+export async function getTodayHabitsResponse(input: {
+  userId: string;
+  userTimezone: string | null;
+  date?: string;
+  status?: StatusFilter;
+}): Promise<TodayHabitResponse> {
+  const timezone = input.userTimezone ?? "UTC";
+  const todayKey = todayDateKeyInTimeZone(timezone, new Date());
+  const dateKey = input.date ?? todayKey;
+
+  const logDate = dateKeyToUtcDate(dateKey);
+  const statuses = statusesFromFilter(input.status);
+
+  // ✅ Fetch dbHabits here so we can compute freeze + startDateKey safely
+  const dbHabits = await habitsRepo.findHabitsForToday(
+    input.userId,
+    logDate,
+    statuses
+  );
+
+  // Map to TodayHabit
+  const mapped = dbHabits.map(dbHabitToTodayHabit);
+
+  // Apply schedule rule
+  const items = mapped.filter((h) =>
+    shouldHabitAppearOnDate({
+      scheduledDays: h.scheduledDays,
+      startDate: h.startDate,
+      dateKey,
+    })
+  );
+
+  const habitIds = items.map((h) => h.id);
+  if (habitIds.length === 0) {
+    return { items: [], meta: { todayKey } };
+  }
+
+  // Build lookup of DB habit by id
+  const dbById = new Map<string, habitsRepo.DbHabitForToday>();
+  for (const h of dbHabits) dbById.set(h.id, h);
+
+  // Determine earliest start key among the returned items (for log scan window)
+  const minStartKey = items.reduce<string>((acc, h) => {
+    const db = dbById.get(h.id);
+    const startKey =
+      db && db.startDate
+        ? utcDateToDateKey(db.startDate)
+        : db && db.createdAt
+        ? utcDateToDateKey(db.createdAt)
+        : h.startDate ?? dateKey; // last-resort fallback
+
+    return acc === "" ? startKey : minDateKey(acc, startKey);
+  }, "");
+
+  const completedRows = await habitLogsRepo.findCompletedLogDateKeysInRange({
+    userId: input.userId,
+    habitIds,
+    fromDateKey: minStartKey,
+    toDateKey: dateKey,
+  });
+
+  const completedByHabit = new Map<string, Set<string>>();
+  for (const row of completedRows) {
+    const set = completedByHabit.get(row.habitId) ?? new Set<string>();
+    set.add(row.dateKey);
+    completedByHabit.set(row.habitId, set);
+  }
+
+  const totals = await habitLogsRepo.countTotalCompletionByHabitids({
+    userId: input.userId,
+    habitIds: [...habitIds],
+  });
+
+  const enriched: TodayHabit[] = items.map((h) => {
+    const db = dbById.get(h.id);
+
+    const startDateKey =
+      db && db.startDate
+        ? utcDateToDateKey(db.startDate)
+        : db && db.createdAt
+        ? utcDateToDateKey(db.createdAt)
+        : h.startDate ?? dateKey;
+
+    const freezeKey =
+      db && db.status === "paused" && db.pausedAt
+        ? dateKeyInTimeZone(timezone, db.pausedAt)
+        : db && db.status === "archived" && db.archivedAt
+        ? dateKeyInTimeZone(timezone, db.archivedAt)
+        : null;
+    const streakBaseKey = minDateKey(dateKey, todayKey);
+
+    const asOfKey = freezeKey
+      ? minDateKey(streakBaseKey, freezeKey)
+      : streakBaseKey;
+
+    const completedSet = completedByHabit.get(h.id) ?? new Set<string>();
+
+    const currentStreakDays = computeCurrentStreakDays({
+      todayKey,
+      asOfKey,
+      startDateKey,
+      scheduledDays: h.scheduledDays,
+      completedDateKeys: completedSet,
+    });
+
+    return {
+      ...h,
+      stats: {
+        totalCompletions: totals[h.id] ?? 0,
+        currentStreakDays,
+      },
+    };
+  });
+
+  return { items: enriched, meta: { todayKey } };
 }

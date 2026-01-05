@@ -9,7 +9,7 @@ import type {
 export type Mode = "app" | "demo";
 export type HabitStats = {
   totalCompletions: number;
-  currentStreakDays: number;
+  currentStreakDays?: number;
 };
 export type TodayHabit = {
   id: string;

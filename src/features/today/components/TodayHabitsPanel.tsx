@@ -14,6 +14,7 @@ import {
   useTodayHabits,
   todayHabitsQueryKey,
   type TodayHabitsStatus,
+  type TodayHabitsResult,
 } from "@/features/today/hooks/useTodayHabits";
 import { useUpdateHabit } from "@/features/today/hooks/useUpdateHabit";
 import { useDeleteHabit } from "@/features/today/hooks/useDeleteHabit";
@@ -84,6 +85,13 @@ export function TodayHabitsPanel({
     () => sortForToday(data?.items ?? []),
     [data?.items]
   );
+  const todayKey = data?.meta?.todayKey ?? toDateKey(new Date());
+  const isPastDay = dateKey < todayKey;
+
+  const missedCount = useMemo(() => {
+    if (!isPastDay) return 0;
+    return baseItems.filter((h) => !h.completedToday).length;
+  }, [baseItems, isPastDay]);
 
   const items = useMemo(() => {
     let out = baseItems;
@@ -109,11 +117,16 @@ export function TodayHabitsPanel({
   }, [baseItems]);
 
   function setCachedItems(nextItems: TodayHabit[]) {
-    queryClient.setQueryData(todayHabitsQueryKey(mode, dateKey, status), {
-      items: nextItems,
-    });
-  }
+    const key = todayHabitsQueryKey(mode, dateKey, status);
 
+    const current = queryClient.getQueryData(key) as
+      | TodayHabitsResult
+      | undefined;
+
+    const meta = current?.meta ?? data?.meta ?? { todayKey };
+
+    queryClient.setQueryData(key, { items: nextItems, meta });
+  }
   function toggleToday(id: string) {
     const current = data?.items ?? [];
     const target = current.find((h) => h.id === id);
@@ -204,7 +217,7 @@ export function TodayHabitsPanel({
 
       const after = (
         queryClient.getQueryData(todayHabitsQueryKey(mode, dateKey, status)) as
-          | { items: TodayHabit[] }
+          | TodayHabitsResult
           | undefined
       )?.items;
 
@@ -237,8 +250,16 @@ export function TodayHabitsPanel({
   return (
     <section className="mt-6">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-foreground">
-          {summary.done}/{summary.total} done
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-foreground">
+            {summary.done}/{summary.total} done
+          </div>
+          {/* ✅ Missed pill (only for past days) */}
+          {isPastDay && missedCount > 0 ? (
+            <div className="inline-flex items-center rounded-full border border-destructive bg-background px-2.5 py-1 text-xs font-semibold text-destructive">
+              {missedCount} missed
+            </div>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -353,10 +374,23 @@ export function TodayHabitsPanel({
             <HabitCard
               key={h.id}
               habit={h}
+              missed={isPastDay && !h.completedToday}
               onToggleToday={toggleToday}
               onOpenDetail={openDetail}
             />
           ))}
+          {/* ✅ Bottom callout */}
+          {isPastDay && missedCount > 0 ? (
+            <div className="mt-4 rounded-3xl border border-destructive bg-card p-4 text-card-foreground shadow-(--shadow-momentum)">
+              <div className="text-sm font-semibold text-foreground">
+                {missedCount} missed habit{missedCount === 1 ? "" : "s"} on this
+                day
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                You can still mark it done.
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
 

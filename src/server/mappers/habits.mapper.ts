@@ -70,6 +70,5 @@ export function dbHabitToTodayHabit(
     visibility: db.visibility,
 
     completedToday,
-    // stats intentionally omitted for now
   };
 }
