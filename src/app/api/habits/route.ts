@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
     res.headers.set("Cache-Control", "no-store");
+    console.error("create habit failed", e);
     return res;
   }
 }
