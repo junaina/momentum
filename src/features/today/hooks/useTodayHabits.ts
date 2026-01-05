@@ -13,7 +13,7 @@ export type TodayHabitsMeta = {
 
 export type TodayHabitsResult = {
   items: TodayHabit[];
-  meta: TodayHabitsMeta;
+  meta?: TodayHabitsMeta;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
