@@ -82,3 +82,21 @@ export async function createManyDoneLogs(input: {
     skipDuplicates: true,
   });
 }
+export async function countTotalCompletionByHabitids(input: {
+  userId: string;
+  habitIds: string[];
+}): Promise<Record<string, number>> {
+  if (input.habitIds.length === 0) return {};
+  const rows = await prisma.habitLog.groupBy({
+    by: ["habitId"],
+    where: {
+      userId: input.userId,
+      habitId: { in: input.habitIds },
+      completedAt: { not: null },
+    },
+    _count: { _all: true },
+  });
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.habitId] = r._count._all;
+  return out;
+}

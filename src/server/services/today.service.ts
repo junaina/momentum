@@ -2,6 +2,7 @@ import type { TodayHabit } from "@/features/today/types";
 import * as habitsRepo from "@/server/repos/habits.repo";
 import { dbHabitToTodayHabit } from "@/server/mappers/habits.mapper";
 import { shouldHabitAppearOnDate } from "@/server/domain/habits/schedule";
+import * as habitLogsRepo from "@/server/repos/habit-logs.repo";
 
 export type TodayHabitsMeta = {
   //server computed today datekey in the user's timezone
@@ -87,5 +88,17 @@ export async function getTodayHabitsResponse(input: {
   const timezone = input.userTimezone ?? "UTC";
   const todayKey = todayDateKeyInTimeZone(timezone, new Date());
   const items = await getTodayHabits(input);
-  return { items, meta: { todayKey } };
+  const counts = await habitLogsRepo.countTotalCompletionByHabitids({
+    userId: input.userId,
+    habitIds: items.map((h) => h.id),
+  });
+
+  const itemsWithStats: TodayHabit[] = items.map((h) => ({
+    ...h,
+    stats: {
+      totalCompletions: counts[h.id] ?? 0,
+    },
+  }));
+
+  return { items: itemsWithStats, meta: { todayKey } };
 }
