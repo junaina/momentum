@@ -52,9 +52,9 @@ export function TodayScreen({ mode }: TodayScreenProps) {
   }
 
   return (
-    <div className="my-4 mx-4 w-full max-w-(--momentum-page-max) px(--momentum-page-padding) py-6">
+    <div className="w-full pb-24 px-4 pt-6 md:px-0 md:pt-0">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 mx-4 my-4">
         <div className="min-w-0">
           <h1 className="truncate text-3xl font-semibold tracking-tight text-foreground">
             {heading}
