@@ -369,7 +369,7 @@ export function TodayHabitsPanel({
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 space-x-4">
           {items.map((h) => (
             <HabitCard
               key={h.id}

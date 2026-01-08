@@ -87,7 +87,7 @@
   --primary-foreground: hsl(0 0% 0%); /* black */
   --ring: hsl(154 62% 50%);
   --momentum-shadow: hsl(152 54% 39%); /* #2e9967 */
-  --momentum-page-max: 52rem;
+  --momentum-page-max: 75rem;
   --momentum-page-padding: 1rem;
   --momentum-sheet-max-h: 90vh;
   --emoji-mart-border-radius: 16px;

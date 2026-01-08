@@ -72,7 +72,7 @@ export function LandingHero() {
                 <Button asChild className="w-full sm:w-auto">
                   <Link href="/signup">Get started</Link>
                 </Button>
-                <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Button asChild variant="outline"  className="w-full sm:w-auto">
                   <Link href="/demo/today">Try Demo</Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full sm:hidden">
