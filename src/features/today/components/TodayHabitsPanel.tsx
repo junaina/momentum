@@ -154,30 +154,45 @@ export function TodayHabitsPanel({
     );
   }
 
-  function markAllDone() {
-    const toMark = items.filter((h) => !h.completedToday).map((h) => h.id);
-    if (toMark.length === 0) return;
+  async function markAllDone() {
+    // operate on currently shown items (respects filters)
+    const shown = items;
+    if (shown.length === 0) return;
+
+    const allShownDone = shown.every((h) => h.completedToday);
+    const nextCompleted = !allShownDone;
+
+    // only update the ones that actually need to change
+    const toSet = shown
+      .filter((h) => h.completedToday !== nextCompleted)
+      .map((h) => h.id);
+
+    if (toSet.length === 0) return;
 
     const current = data?.items ?? [];
 
-    // optimistic: mark only currently shown items
+    // optimistic: flip only the targeted IDs in the cached list
     setCachedItems(
       current.map((h) =>
-        toMark.includes(h.id) ? { ...h, completedToday: true } : h
+        toSet.includes(h.id) ? { ...h, completedToday: nextCompleted } : h
       )
     );
 
-    markAllMutation.mutate(
-      { dateKey, habitIds: toMark },
-      {
-        onError: () => setCachedItems(current),
-        onSettled: () => {
-          void queryClient.invalidateQueries({
-            queryKey: todayHabitsQueryKey(mode, dateKey, status),
-          });
-        },
-      }
-    );
+    try {
+      // one request per habit (simple + reuses existing endpoint)
+      await Promise.all(
+        toSet.map((habitId) =>
+          toggleLogMutation.mutateAsync({ habitId, dateKey, nextCompleted })
+        )
+      );
+    } catch {
+      // rollback on any failure
+      setCachedItems(current);
+    } finally {
+      void queryClient.invalidateQueries({
+        queryKey: todayHabitsQueryKey(mode, dateKey, status),
+      });
+    }
   }
 
   function openDetail(id: string) {
@@ -275,10 +290,7 @@ export function TodayHabitsPanel({
           <button
             type="button"
             onClick={markAllDone}
-            disabled={
-              items.filter((h) => !h.completedToday).length === 0 ||
-              markAllMutation.isPending
-            }
+            disabled={items.length === 0 || toggleLogMutation.isPending}
             className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Mark all shown habits done"
           >
@@ -381,7 +393,7 @@ export function TodayHabitsPanel({
           ))}
           {/* ✅ Bottom callout */}
           {isPastDay && missedCount > 0 ? (
-            <div className="mt-4 rounded-3xl border border-destructive bg-card p-4 text-card-foreground shadow-(--shadow-momentum)">
+            <div className="mt-4 rounded-3xl border border-destructive bg-card p-4 text-card-foreground shadow-(--shadow-momentum) w-1/3">
               <div className="text-sm font-semibold text-foreground">
                 {missedCount} missed habit{missedCount === 1 ? "" : "s"} on this
                 day
