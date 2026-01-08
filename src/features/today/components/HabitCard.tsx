@@ -33,7 +33,7 @@ export function HabitCard({
       onClick={() => onOpenDetail(habit.id)}
       style={accentStyle}
       className={[
-        "momentum-habit-card w-full rounded-3xl p-4 text-left",
+        "momentum-habit-card lg:w-1/3 rounded-3xl p-4 text-left",
         missed
           ? "ring-2 ring-destructive ring-offset-2 ring-offset-background"
           : "",
