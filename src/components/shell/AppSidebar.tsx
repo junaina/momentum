@@ -3,7 +3,9 @@ import * as React from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { SidebarProfile } from "@/components/shell/SidebarProfile";
 import { Button } from "@/components/ui/button";
-
+import { CalendarDays } from "lucide-react";
+import { SidebarNavItem } from "@/components/shell/SidebarNavItem";
+import { appHref } from "@/components/shell/nav";
 type AppMode = "demo" | "auth";
 
 export function AppSidebar({
@@ -69,15 +71,16 @@ export function AppSidebar({
 
       {/* Future nav goes here */}
       <div className="flex-1 px-2 pb-2">
-        {/* Placeholder for now (Slice 2 will add real nav items) */}
-        <div
-          className={[
-            "mt-2 rounded-xl border border-sidebar-border",
-            "p-3 text-xs text-muted-foreground",
-            isCollapsed ? "hidden" : "block",
-          ].join(" ")}
-        >
-          Sidebar nav items will go here next (Today, Week, Habits, etc.)
+        {/*/today*/}
+        <div className="flex-1 px-2 pb-2">
+          <nav className="mt-2 space-y-1">
+            <SidebarNavItem
+              href={appHref(mode, "/today")}
+              label="Today"
+              icon={CalendarDays}
+              collapsed={isCollapsed}
+            />
+          </nav>
         </div>
       </div>
     </aside>
