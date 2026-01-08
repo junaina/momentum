@@ -3,7 +3,7 @@ import * as React from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { SidebarProfile } from "@/components/shell/SidebarProfile";
 import { Button } from "@/components/ui/button";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChartNoAxesCombined } from "lucide-react";
 import { SidebarNavItem } from "@/components/shell/SidebarNavItem";
 import { appHref } from "@/components/shell/nav";
 type AppMode = "demo" | "auth";
@@ -78,6 +78,17 @@ export function AppSidebar({
               href={appHref(mode, "/today")}
               label="Today"
               icon={CalendarDays}
+              collapsed={isCollapsed}
+            />
+          </nav>
+        </div>
+        {/*/Weekly Stats */}
+        <div className="flex-1 px-2 pb-2">
+          <nav className="mt-2 space-y-1">
+            <SidebarNavItem
+              href={appHref(mode, "/weekly")}
+              label="Weekly Stats"
+              icon={ChartNoAxesCombined}
               collapsed={isCollapsed}
             />
           </nav>
