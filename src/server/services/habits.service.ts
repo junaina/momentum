@@ -79,6 +79,11 @@ export async function createHabit(input: {
     if (weeklyTarget < 1 || weeklyTarget > 7) {
       throw new Error("Invalid weeklyTarget");
     }
+    if (weeklyTarget > scheduledDays.length) {
+      throw new Error(
+        "Weekly Target cannot exceed the number of Scheduled Days"
+      );
+    }
   }
 
   const reminderEnabled = Boolean(
@@ -157,6 +162,11 @@ export async function updateHabit(input: {
     weeklyTarget = b.weeklyTarget ?? scheduledDays.length;
     if (weeklyTarget < 1 || weeklyTarget > 7)
       throw new Error("Invalid weeklyTarget");
+    if (weeklyTarget > scheduledDays.length) {
+      throw new Error(
+        "Weekly Target cannot exceed the number of Scheduled Days"
+      );
+    }
   }
 
   // 4) Status timestamps (only set once per transition)

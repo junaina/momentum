@@ -152,6 +152,10 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
           queryKey: ["todayHabits", "app", dateKey],
         });
       }
+      const stats =
+        finalPayload.frequency === "weekly"
+          ? { totalCompletions: 0, currentStreakWeeks: 0 }
+          : { totalCompletions: 0, currentStreakDays: 0 };
 
       if (mode === "demo" && props.activeDate) {
         const dateKey = toDateKey(props.activeDate);
@@ -187,7 +191,7 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
             visibility: "private",
 
             completedToday: false,
-            stats: { totalCompletions: 0, currentStreakDays: 0 },
+            stats,
           };
 
           queryClient.setQueryData<TodayHabitsResult>(
