@@ -12,7 +12,7 @@ export type HabitForStats = {
   color: string | null;
 
   frequency: HabitFrequency;
-  scheduledDays: DayOfWeek;
+  scheduledDays: DayOfWeek[];
   weeklyTarget: number | null;
 
   startDateKey: string | null;

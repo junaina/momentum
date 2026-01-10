@@ -38,7 +38,7 @@ export const statsHabitRowSchema = z.object({
   missed: int0,
 
   //business rule 4.6: adherence is null when planned ==0
-  adhernce: z.number().min(0).max(1).nullable(),
+  adherence: z.number().min(0).max(1).nullable(),
 
   //business rule 8.1: PP delta is null if either of the aderences is null
   deltaAdherencePP: z.number().nullable(),
@@ -82,7 +82,7 @@ export const statsResponseSchema = z
     }),
     overall: z.object({
       planned: int0,
-      compleetd: int0,
+      completed: int0,
       missed: int0,
       adherence: z.number().min(0).max(1).nullable(),
       deltaAdherencePP: z.number().nullable(),
