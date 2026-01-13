@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Mode } from "@/features/today/types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,7 +28,12 @@ async function deleteHabitApi(mode: Mode, habitId: string): Promise<void> {
 }
 
 export function useDeleteHabit(mode: Mode) {
+  const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: (habitId) => deleteHabitApi(mode, habitId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["todayHabits"] });
+    },
   });
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateHabitInput } from "@/features/today/schema";
 type Mode = "app" | "demo";
 
@@ -34,7 +34,12 @@ async function createHabitApi(
 }
 
 export function useCreateHabit(mode: Mode) {
+  const qc = useQueryClient();
   return useMutation<CreateHabitResult, Error, CreateHabitInput>({
     mutationFn: (input) => createHabitApi(mode, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["todayHabits"] });
+    },
   });
 }

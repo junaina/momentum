@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Mode } from "@/features/today/types";
 import { setDemoHabitDone } from "@/features/today/demo/todaySeed";
 
@@ -51,7 +51,12 @@ async function toggleApi(mode: Mode, input: Input): Promise<Result> {
 }
 
 export function useToggleHabitLog(mode: Mode) {
+  const qc = useQueryClient();
   return useMutation<Result, Error, Input>({
     mutationFn: (input) => toggleApi(mode, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["todayHabits"] });
+    },
   });
 }
