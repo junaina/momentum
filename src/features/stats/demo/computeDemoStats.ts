@@ -11,6 +11,52 @@ type StatsStatus = "active" | "activePaused" | "all";
 
 type Range = { startKey: string; endKey: string };
 type WeekStartsOn = 0 | 1;
+function isUuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    s
+  );
+}
+
+// Fast 32-bit FNV-1a
+function fnv1a32(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    // multiply by FNV prime 16777619 (no BigInt)
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function hex8(n: number): string {
+  return (n >>> 0).toString(16).padStart(8, "0");
+}
+
+// Deterministic UUID-like string (v4-ish) from any stable id
+function stableDemoUuid(raw: string): string {
+  if (isUuid(raw)) return raw;
+
+  // build 128 bits from four 32-bit hashes
+  const a = fnv1a32(`demo:a:${raw}`);
+  const b = fnv1a32(`demo:b:${raw}`);
+  const c = fnv1a32(`demo:c:${raw}`);
+  const d = fnv1a32(`demo:d:${raw}`);
+
+  // 32 hex chars
+  let hex = hex8(a) + hex8(b) + hex8(c) + hex8(d);
+
+  // set version nibble to 4 (uuid v4)
+  hex = hex.slice(0, 12) + "4" + hex.slice(13);
+
+  // set variant to 8,9,a,b (we’ll force 8)
+  const variantNibble = "8";
+  hex = hex.slice(0, 16) + variantNibble + hex.slice(17);
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(
+    12,
+    16
+  )}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 function dateKeyToUtcDate(dateKey: string): Date {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -106,10 +152,12 @@ function buildDayMap(startKey: string, endKey: string): DayMap {
     const habits = getDemoHabitsForDate(date);
     const inner = new Map<string, DayMapEntry>();
     for (const h of habits) {
-      inner.set(h.id, {
+      const id = stableDemoUuid(h.id);
+
+      inner.set(id, {
         planned: true,
         completed: Boolean(h.completedToday),
-        habit: h,
+        habit: h, // keep original habit object
       });
     }
     map.set(dayKey, inner);
@@ -121,7 +169,7 @@ function collectHabitsFromDayMap(dayMap: DayMap): Map<string, TodayHabit> {
   const habits = new Map<string, TodayHabit>();
   for (const inner of dayMap.values()) {
     for (const [id, entry] of inner.entries()) {
-      if (!habits.has(id)) habits.set(id, entry.habit);
+      if (!habits.has(id)) habits.set(id, { ...entry.habit, id });
     }
   }
   return habits;
