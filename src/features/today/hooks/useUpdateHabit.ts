@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UpdateHabitInput } from "@/features/today/schema";
 import type { Mode, TodayHabit } from "@/features/today/types";
 
@@ -62,7 +62,12 @@ async function updateHabitApi(
 }
 
 export function useUpdateHabit(mode: Mode, dateKey: string) {
+  const qc = useQueryClient();
   return useMutation<TodayHabit, Error, UpdateHabitInput>({
     mutationFn: (input) => updateHabitApi(mode, input, dateKey),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["todayHabits"] });
+    },
   });
 }

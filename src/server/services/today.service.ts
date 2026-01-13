@@ -3,7 +3,11 @@ import type { TodayHabit } from "@/features/today/types";
 import * as habitsRepo from "@/server/repos/habits.repo";
 import { dbHabitToTodayHabit } from "@/server/mappers/habits.mapper";
 import { shouldHabitAppearOnDate } from "@/server/domain/habits/schedule";
-import { computeCurrentStreakDays } from "@/server/domain/streaks/currentStreak";
+import {
+  computeCurrentStreakDays,
+  computeCurrentStreakWeeks,
+  previousDateKey,
+} from "@/server/domain/streaks/currentStreak";
 import * as habitLogsRepo from "@/server/repos/habit-logs.repo";
 
 export type TodayHabitsMeta = {
@@ -109,6 +113,7 @@ export async function getTodayHabits(input: {
 export async function getTodayHabitsResponse(input: {
   userId: string;
   userTimezone: string | null;
+  userWeekStartDay?: 0 | 1;
   date?: string;
   status?: StatusFilter;
 }): Promise<TodayHabitResponse> {
@@ -189,19 +194,49 @@ export async function getTodayHabitsResponse(input: {
         ? utcDateToDateKey(db.createdAt)
         : h.startDate ?? dateKey;
 
-    const freezeKey =
+    const completedSet = completedByHabit.get(h.id) ?? new Set<string>();
+
+    const freezeKeyRaw =
       db && db.status === "paused" && db.pausedAt
         ? dateKeyInTimeZone(timezone, db.pausedAt)
         : db && db.status === "archived" && db.archivedAt
         ? dateKeyInTimeZone(timezone, db.archivedAt)
         : null;
-    const streakBaseKey = minDateKey(dateKey, todayKey);
 
+    // ✅ Fix #2: pausing/archiving on a missed (scheduled) day should NOT break streak.
+    // Freeze “as of” the previous day unless that freeze day was completed or is today.
+    const freezeKey =
+      freezeKeyRaw &&
+      freezeKeyRaw !== todayKey &&
+      !completedSet.has(freezeKeyRaw)
+        ? previousDateKey(freezeKeyRaw)
+        : freezeKeyRaw;
+
+    const streakBaseKey = minDateKey(dateKey, todayKey);
     const asOfKey = freezeKey
       ? minDateKey(streakBaseKey, freezeKey)
       : streakBaseKey;
 
-    const completedSet = completedByHabit.get(h.id) ?? new Set<string>();
+    // ✅ Fix #1: weekly habits use weekly streak logic
+    if (h.frequency === "weekly" && h.weeklyTarget) {
+      const currentStreakWeeks = computeCurrentStreakWeeks({
+        todayKey,
+        asOfKey,
+        startDateKey,
+        scheduledDays: h.scheduledDays,
+        weeklyTarget: h.weeklyTarget,
+        completedDateKeys: completedSet,
+        weekStartsOn: input.userWeekStartDay ?? 1,
+      });
+
+      return {
+        ...h,
+        stats: {
+          totalCompletions: totals[h.id] ?? 0,
+          currentStreakWeeks,
+        },
+      };
+    }
 
     const currentStreakDays = computeCurrentStreakDays({
       todayKey,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Mode } from "@/features/today/types";
 import { markAllDemoHabitsDone } from "@/features/today/demo/todaySeed";
 
@@ -47,7 +47,12 @@ async function markAllApi(mode: Mode, input: Input): Promise<Result> {
 }
 
 export function useMarkAllTodayDone(mode: Mode) {
+  const qc = useQueryClient();
   return useMutation<Result, Error, Input>({
     mutationFn: (input) => markAllApi(mode, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["todayHabits"] });
+    },
   });
 }

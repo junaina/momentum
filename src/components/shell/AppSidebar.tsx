@@ -82,12 +82,12 @@ export function AppSidebar({
             />
           </nav>
         </div>
-        {/*/Weekly Stats */}
+        {/*/ Stats */}
         <div className="flex-1 px-2 pb-2">
           <nav className="mt-2 space-y-1">
             <SidebarNavItem
-              href={appHref(mode, "/weekly")}
-              label="Weekly Stats"
+              href={appHref(mode, "/progress")}
+              label="Progress"
               icon={ChartNoAxesCombined}
               collapsed={isCollapsed}
             />

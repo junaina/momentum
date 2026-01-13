@@ -23,7 +23,15 @@ export function HabitCard({
   const done = habit.completedToday;
 
   const total = habit.stats?.totalCompletions;
-  const streak = habit.stats?.currentStreakDays;
+  const streakDays = habit.stats?.currentStreakDays;
+  const streakWeeks = habit.stats?.currentStreakWeeks;
+
+  const streakLabel =
+    typeof streakWeeks === "number"
+      ? `${streakWeeks}w streak`
+      : typeof streakDays === "number"
+      ? `${streakDays}d streak`
+      : "";
   const accentStyle = {
     "--habit-accent": colorVar(habit.colorToken),
   } as CSSProperties;
@@ -72,7 +80,7 @@ export function HabitCard({
                     {typeof total === "number"
                       ? `${total} days completed`
                       : "— days completed"}
-                    {typeof streak === "number" ? ` · ${streak}d streak` : ""}
+                    {streakLabel ? ` · ${streakLabel}` : ""}
                   </div>
                 </div>
               </div>

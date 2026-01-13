@@ -13,12 +13,28 @@ function utcDateToDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function previousDateKey(dateKey: string): string {
+export function previousDateKey(dateKey: string): string {
   const d = dateKeyToUtcDate(dateKey);
   d.setUTCDate(d.getUTCDate() - 1);
   return utcDateToDateKey(d);
 }
 
+function addDaysDateKey(dateKey: string, deltaDays: number): string {
+  const d = dateKeyToUtcDate(dateKey);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return utcDateToDateKey(d);
+}
+function dayOfWeek(dateKey: string): number {
+  return dateKeyToUtcDate(dateKey).getUTCDay();
+}
+function startOfWeekDateKey(dateKey: string, weekStartsOn: 0 | 1): string {
+  const dow = dayOfWeek(dateKey);
+  const diff = (dow - weekStartsOn + 7) % 7;
+  return addDaysDateKey(dateKey, -diff);
+}
+function minDateKey(a: string, b: string): string {
+  return a <= b ? a : b;
+}
 export function computeCurrentStreakDays(input: {
   todayKey: string; // timezone-correct "today"
   asOfKey: string; // selected day, clamped for freeze
@@ -58,4 +74,189 @@ export function computeCurrentStreakDays(input: {
   }
 
   return streak;
+}
+
+export function computeCurrentStreakWeeks(input: {
+  todayKey: string; // timezone-correct "today"
+  asOfKey: string; // selected day, clamped for freeze
+  startDateKey: string;
+  scheduledDays: DayOfWeek[];
+  weeklyTarget: number;
+  completedDateKeys: ReadonlySet<string>;
+  weekStartsOn?: 0 | 1; // default monday
+}): number {
+  const weekStartsOn = input.weekStartsOn ?? 1;
+  let streak = 0;
+  let weekStart = startOfWeekDateKey(input.asOfKey, weekStartsOn);
+  let firstWeek = true;
+  while (true) {
+    const weekEnd = addDaysDateKey(weekStart, 6);
+
+    //no overlap with habit lifetime
+    if (weekEnd < input.startDateKey) break;
+
+    //current week is partial only consider upto asOfKey
+    const rangeEnd = firstWeek ? minDateKey(weekEnd, input.asOfKey) : weekEnd;
+    let eligibleDays = 0;
+    let completed = 0;
+
+    //iterating day by day from weekStart to rangeEnd
+    let cursor = weekStart;
+    while (cursor <= rangeEnd) {
+      const isScheduled = shouldHabitAppearOnDate({
+        scheduledDays: input.scheduledDays,
+        startDate: input.startDateKey,
+        dateKey: cursor,
+      });
+      if (isScheduled) {
+        eligibleDays += 1;
+        if (input.completedDateKeys.has(cursor)) completed += 1;
+      }
+      cursor = addDaysDateKey(cursor, 1);
+    }
+    //if habit only existed for part of this week dont require the full weekly target
+    const planned = Math.min(input.weeklyTarget, eligibleDays);
+
+    // Nothing eligible in this slice (rare, but safe): skip current week, otherwise stop
+    if (planned === 0) {
+      if (firstWeek) {
+        firstWeek = false;
+        weekStart = addDaysDateKey(weekStart, -7);
+        continue;
+      }
+      break;
+    }
+    const met = completed >= planned;
+
+    // if the current week has not been met yet, dont break streak just start counting from the last completed weeks
+    if (firstWeek && !met) {
+      firstWeek = false;
+      weekStart = addDaysDateKey(weekStart, -7);
+      continue;
+    }
+    if (met) {
+      streak += 1;
+      firstWeek = false;
+      weekStart = addDaysDateKey(weekStart, -7);
+      continue;
+    }
+    break;
+  }
+  return streak;
+}
+
+function maxDateKey(a: string, b: string): string {
+  return a >= b ? a : b;
+}
+
+export function computeLongestStreakDays(input: {
+  todayKey: string;
+  asOfKey: string;
+  startDateKey: string;
+  scheduledDays: DayOfWeek[];
+  completedDateKeys: ReadonlySet<string>;
+}): number {
+  let best = 0;
+  let run = 0;
+
+  let cursor = input.startDateKey;
+  while (cursor <= input.asOfKey) {
+    const isScheduled = shouldHabitAppearOnDate({
+      scheduledDays: input.scheduledDays,
+      startDate: input.startDateKey,
+      dateKey: cursor,
+    });
+
+    if (!isScheduled) {
+      cursor = addDaysDateKey(cursor, 1);
+      continue;
+    }
+
+    // "today not done yet" shouldn't break a streak while in progress
+    if (cursor === input.todayKey && !input.completedDateKeys.has(cursor)) {
+      cursor = addDaysDateKey(cursor, 1);
+      continue;
+    }
+
+    if (input.completedDateKeys.has(cursor)) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 0;
+    }
+
+    cursor = addDaysDateKey(cursor, 1);
+  }
+
+  return best;
+}
+
+export function computeLongestStreakWeeks(input: {
+  todayKey: string;
+  asOfKey: string;
+  startDateKey: string;
+  scheduledDays: DayOfWeek[];
+  weeklyTarget: number;
+  completedDateKeys: ReadonlySet<string>;
+  weekStartsOn?: 0 | 1;
+}): number {
+  const weekStartsOn = input.weekStartsOn ?? 1;
+
+  let best = 0;
+  let run = 0;
+
+  let weekStart = startOfWeekDateKey(input.startDateKey, weekStartsOn);
+
+  while (weekStart <= input.asOfKey) {
+    const weekEnd = addDaysDateKey(weekStart, 6);
+
+    const sliceStart = maxDateKey(weekStart, input.startDateKey);
+    const sliceEnd = weekEnd > input.asOfKey ? input.asOfKey : weekEnd;
+
+    let eligibleDays = 0;
+    let completed = 0;
+
+    let cursor = sliceStart;
+    while (cursor <= sliceEnd) {
+      const isScheduled = shouldHabitAppearOnDate({
+        scheduledDays: input.scheduledDays,
+        startDate: input.startDateKey,
+        dateKey: cursor,
+      });
+
+      if (isScheduled) {
+        eligibleDays += 1;
+        if (input.completedDateKeys.has(cursor)) completed += 1;
+      }
+
+      cursor = addDaysDateKey(cursor, 1);
+    }
+
+    const planned = Math.min(input.weeklyTarget, eligibleDays);
+
+    // no eligible days this week → ignore (doesn't count, doesn't break)
+    if (planned === 0) {
+      weekStart = addDaysDateKey(weekStart, 7);
+      continue;
+    }
+
+    const isPartialCurrentWeek = weekEnd > input.asOfKey;
+
+    // partial current week not met yet → don't break longest streak
+    if (isPartialCurrentWeek && completed < planned) {
+      weekStart = addDaysDateKey(weekStart, 7);
+      continue;
+    }
+
+    if (completed >= planned) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 0;
+    }
+
+    weekStart = addDaysDateKey(weekStart, 7);
+  }
+
+  return best;
 }
