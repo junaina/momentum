@@ -144,3 +144,119 @@ export function computeCurrentStreakWeeks(input: {
   }
   return streak;
 }
+
+function maxDateKey(a: string, b: string): string {
+  return a >= b ? a : b;
+}
+
+export function computeLongestStreakDays(input: {
+  todayKey: string;
+  asOfKey: string;
+  startDateKey: string;
+  scheduledDays: DayOfWeek[];
+  completedDateKeys: ReadonlySet<string>;
+}): number {
+  let best = 0;
+  let run = 0;
+
+  let cursor = input.startDateKey;
+  while (cursor <= input.asOfKey) {
+    const isScheduled = shouldHabitAppearOnDate({
+      scheduledDays: input.scheduledDays,
+      startDate: input.startDateKey,
+      dateKey: cursor,
+    });
+
+    if (!isScheduled) {
+      cursor = addDaysDateKey(cursor, 1);
+      continue;
+    }
+
+    // "today not done yet" shouldn't break a streak while in progress
+    if (cursor === input.todayKey && !input.completedDateKeys.has(cursor)) {
+      cursor = addDaysDateKey(cursor, 1);
+      continue;
+    }
+
+    if (input.completedDateKeys.has(cursor)) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 0;
+    }
+
+    cursor = addDaysDateKey(cursor, 1);
+  }
+
+  return best;
+}
+
+export function computeLongestStreakWeeks(input: {
+  todayKey: string;
+  asOfKey: string;
+  startDateKey: string;
+  scheduledDays: DayOfWeek[];
+  weeklyTarget: number;
+  completedDateKeys: ReadonlySet<string>;
+  weekStartsOn?: 0 | 1;
+}): number {
+  const weekStartsOn = input.weekStartsOn ?? 1;
+
+  let best = 0;
+  let run = 0;
+
+  let weekStart = startOfWeekDateKey(input.startDateKey, weekStartsOn);
+
+  while (weekStart <= input.asOfKey) {
+    const weekEnd = addDaysDateKey(weekStart, 6);
+
+    const sliceStart = maxDateKey(weekStart, input.startDateKey);
+    const sliceEnd = weekEnd > input.asOfKey ? input.asOfKey : weekEnd;
+
+    let eligibleDays = 0;
+    let completed = 0;
+
+    let cursor = sliceStart;
+    while (cursor <= sliceEnd) {
+      const isScheduled = shouldHabitAppearOnDate({
+        scheduledDays: input.scheduledDays,
+        startDate: input.startDateKey,
+        dateKey: cursor,
+      });
+
+      if (isScheduled) {
+        eligibleDays += 1;
+        if (input.completedDateKeys.has(cursor)) completed += 1;
+      }
+
+      cursor = addDaysDateKey(cursor, 1);
+    }
+
+    const planned = Math.min(input.weeklyTarget, eligibleDays);
+
+    // no eligible days this week → ignore (doesn't count, doesn't break)
+    if (planned === 0) {
+      weekStart = addDaysDateKey(weekStart, 7);
+      continue;
+    }
+
+    const isPartialCurrentWeek = weekEnd > input.asOfKey;
+
+    // partial current week not met yet → don't break longest streak
+    if (isPartialCurrentWeek && completed < planned) {
+      weekStart = addDaysDateKey(weekStart, 7);
+      continue;
+    }
+
+    if (completed >= planned) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 0;
+    }
+
+    weekStart = addDaysDateKey(weekStart, 7);
+  }
+
+  return best;
+}

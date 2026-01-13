@@ -9,6 +9,7 @@ import type {
   StatsHabitRow,
   StatsResponse,
 } from "@/features/stats/statsSchema";
+import { computeProgressStreaksForHabit } from "./progressStreaks";
 
 function deltaPP(curr: number | null, prev: number | null): number | null {
   if (curr == null || prev == null) return null;
@@ -57,6 +58,13 @@ export function buildStatsEngine(input: {
     const trendLabel: StatsHabitRow["trendLabel"] =
       prev.planned === 0 && curr.planned > 0 ? "new" : null;
 
+    const streaks = computeProgressStreaksForHabit({
+      habit: h,
+      completedDateKeys: completed,
+      todayKey: input.todayKey,
+      asOfKey,
+      weekStartsOn: input.weekStartsOn,
+    });
     const row = {
       habitId: h.id,
       name: h.name,
@@ -74,6 +82,7 @@ export function buildStatsEngine(input: {
 
       metTarget: curr.metTarget,
       trendLabel,
+      ...streaks,
     } satisfies StatsHabitRow;
 
     return row;
