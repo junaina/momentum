@@ -197,3 +197,12 @@
       var(--card);
   }
 }
+.momentum-dots {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in oklab, var(--border) 70%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 18px 18px;
+  mask-image: radial-gradient(circle at 50% 25%, black 0%, transparent 70%);
+}
