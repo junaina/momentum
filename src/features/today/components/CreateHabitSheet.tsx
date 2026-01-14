@@ -87,7 +87,7 @@ export function CreateHabitSheet(props: CreateHabitSheetProps) {
 
   const computedDescription = useMemo(() => {
     return mode === "demo"
-      ? "This is the demo flow (seeded later). Your UI should behave the same as the real app."
+      ? "This is the demo flow"
       : "Create a habit that will appear on Today based on its schedule.";
   }, [mode]);
 

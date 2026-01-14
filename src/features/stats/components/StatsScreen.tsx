@@ -136,6 +136,15 @@ export function StatsScreen({ mode }: { mode: Mode }) {
         {/* sticky controls */}
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border">
           <div className="mx-auto w-full max-w-[var(--momentum-page-max)] px-[var(--momentum-page-padding)] py-3 flex items-center gap-2">
+            {/* Header (like Today) */}
+            <div className="flex items-center justify-between gap-3 my-4 mr-10">
+              <div className="min-w-0">
+                <h1 className="truncate text-3xl font-semibold tracking-tight text-foreground">
+                  Progress
+                </h1>
+              </div>
+            </div>
+
             <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
               <Button
                 type="button"
